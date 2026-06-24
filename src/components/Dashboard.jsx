@@ -227,6 +227,77 @@ const fetchLiveWeather = async () => {
 // Deep clone function
 const deepClone = (obj) => JSON.parse(JSON.stringify(obj));
 
+// ======================== REJECT MODAL COMPONENT ========================
+const RejectModal = ({ isOpen, onClose, onConfirm, title, itemName }) => {
+    const [reason, setReason] = useState('');
+
+    useEffect(() => {
+        const handleEsc = (e) => {
+            if (e.key === 'Escape' && isOpen) {
+                onClose();
+            }
+        };
+        window.addEventListener('keydown', handleEsc);
+        return () => window.removeEventListener('keydown', handleEsc);
+    }, [isOpen, onClose]);
+
+    useEffect(() => {
+        if (isOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'unset';
+            setReason('');
+        }
+        return () => {
+            document.body.style.overflow = 'unset';
+        };
+    }, [isOpen]);
+
+    if (!isOpen) return null;
+
+    const handleOverlayClick = (e) => {
+        if (e.target === e.currentTarget) {
+            onClose();
+        }
+    };
+
+    const handleConfirm = () => {
+        if (!reason.trim()) {
+            alert('Please provide a rejection reason.');
+            return;
+        }
+        onConfirm(reason);
+        setReason('');
+        onClose();
+    };
+
+    return (
+        <div className="modal-overlay" onClick={handleOverlayClick}>
+            <div className="modal-content reject-modal" onClick={e => e.stopPropagation()}>
+                <div className="modal-header">
+                    <h3>{title || 'Reject Item'}</h3>
+                    <button className="modal-close" onClick={onClose}>×</button>
+                </div>
+                <div className="modal-body">
+                    <p><strong>Item:</strong> {itemName || 'Unnamed item'}</p>
+                    <p>Please provide a reason for rejecting this item:</p>
+                    <textarea
+                        className="reject-reason-textarea"
+                        value={reason}
+                        onChange={(e) => setReason(e.target.value)}
+                        placeholder="Enter rejection reason..."
+                        rows="4"
+                    />
+                </div>
+                <div className="modal-buttons">
+                    <button className="danger" onClick={handleConfirm}>Confirm Rejection</button>
+                    <button className="modal-close-footer-btn" onClick={onClose}>Cancel</button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 // ======================== EXTRACTED COMPONENTS ========================
 
 // Toast component
@@ -391,9 +462,7 @@ const EditControlsBar = ({ selectedOffice, isUser, editMode, handleEditToggle, o
     </div>
 );
 
-// ============================================
-// FIXED: Office Modal component with proper closing
-// ============================================
+// Office Modal component
 const OfficeModal = ({
     isOpen,
     onClose,
@@ -402,7 +471,6 @@ const OfficeModal = ({
     currentOfficeData,
     officeStatusRemarks
 }) => {
-    // Handle escape key
     useEffect(() => {
         const handleEsc = (e) => {
             if (e.key === 'Escape' && isOpen) {
@@ -413,7 +481,6 @@ const OfficeModal = ({
         return () => window.removeEventListener('keydown', handleEsc);
     }, [isOpen, onClose]);
 
-    // Prevent body scroll when modal is open
     useEffect(() => {
         if (isOpen) {
             document.body.style.overflow = 'hidden';
@@ -425,16 +492,8 @@ const OfficeModal = ({
         };
     }, [isOpen]);
 
-    // Reset modal state on unmount
-    useEffect(() => {
-        return () => {
-            document.body.style.overflow = 'unset';
-        };
-    }, []);
-
     if (!isOpen || !selectedOffice) return null;
 
-    // Handle overlay click
     const handleOverlayClick = (e) => {
         if (e.target === e.currentTarget) {
             onClose();
@@ -589,7 +648,6 @@ const AddEventModal = ({
     handleAddEvent,
     allProvinces
 }) => {
-    // Handle escape key
     useEffect(() => {
         const handleEsc = (e) => {
             if (e.key === 'Escape' && isOpen) {
@@ -600,7 +658,6 @@ const AddEventModal = ({
         return () => window.removeEventListener('keydown', handleEsc);
     }, [isOpen, onClose]);
 
-    // Prevent body scroll when modal is open
     useEffect(() => {
         if (isOpen) {
             document.body.style.overflow = 'hidden';
@@ -628,7 +685,6 @@ const AddEventModal = ({
                     <button type="button" className="modal-close" onClick={onClose}>×</button>
                 </div>
                 <form onSubmit={(e) => { e.preventDefault(); handleAddEvent(); }} className="event-form">
-                    {/* Basic Information */}
                     <div className="form-section">
                         <h4 className="form-section-title">📋 Basic Information</h4>
                         <div className="form-row">
@@ -645,7 +701,6 @@ const AddEventModal = ({
                                 />
                             </div>
                         </div>
-
                         <div className="form-row">
                             <div className="form-group">
                                 <label>Alert Level</label>
@@ -680,7 +735,6 @@ const AddEventModal = ({
                         </div>
                     </div>
 
-                    {/* Date & Time */}
                     <div className="form-section">
                         <h4 className="form-section-title">📅 Date & Time</h4>
                         <div className="datetime-row">
@@ -707,7 +761,6 @@ const AddEventModal = ({
                         </div>
                     </div>
 
-                    {/* Track & Intensity */}
                     <div className="form-section">
                         <h4 className="form-section-title">🎯 Track & Intensity</h4>
                         <div className="form-row">
@@ -736,7 +789,6 @@ const AddEventModal = ({
                         </div>
                     </div>
 
-                    {/* Weather & Report Link */}
                     <div className="form-section">
                         <h4 className="form-section-title">🌤️ Weather & Report</h4>
                         <div className="form-row">
@@ -765,7 +817,6 @@ const AddEventModal = ({
                         </div>
                     </div>
 
-                    {/* Damage & Impact */}
                     <div className="form-section">
                         <h4 className="form-section-title">📊 Damage & Impact</h4>
                         <div className="form-row">
@@ -944,7 +995,6 @@ const AddEventModal = ({
                         </div>
                     </div>
 
-                    {/* Affected Areas */}
                     <div className="form-section">
                         <h4 className="form-section-title">📍 Affected Areas</h4>
                         <div className="scope-grid">
@@ -991,7 +1041,6 @@ const AddEventModal = ({
                         </div>
                     </div>
 
-                    {/* Event Image */}
                     <div className="form-section">
                         <h4 className="form-section-title">🖼️ Event Image</h4>
                         <div className="form-group">
@@ -1049,9 +1098,11 @@ const EventDetailsModal = ({
     handleDeleteEvent,
     handleEditEvent,
     getAlertColor,
-    openImageModal
+    openImageModal,
+    handleRejectEvent
 }) => {
-    // Handle escape key
+    const [showRejectModal, setShowRejectModal] = useState(false);
+
     useEffect(() => {
         const handleEsc = (e) => {
             if (e.key === 'Escape' && isOpen) {
@@ -1062,7 +1113,6 @@ const EventDetailsModal = ({
         return () => window.removeEventListener('keydown', handleEsc);
     }, [isOpen, onClose]);
 
-    // Prevent body scroll when modal is open
     useEffect(() => {
         if (isOpen) {
             document.body.style.overflow = 'hidden';
@@ -1082,159 +1132,182 @@ const EventDetailsModal = ({
         }
     };
 
+    const handleRejectClick = () => {
+        setShowRejectModal(true);
+    };
+
+    const handleRejectConfirm = (reason) => {
+        if (handleRejectEvent) {
+            handleRejectEvent(selectedEvent.id, reason);
+        }
+        setShowRejectModal(false);
+    };
+
     return (
-        <div className="modal-overlay" onClick={handleOverlayClick}>
-            <div className="modal-content event-details-modal" onClick={e => e.stopPropagation()}>
-                <div className="details-header">
-                    <div className="details-title">{selectedEvent.name}</div>
-                    <button className="modal-close" onClick={onClose}>×</button>
-                </div>
-                <div className="detail-section">
-                    <div className="detail-section-title">📋 TROPICAL CYCLONE PRELIMINARY REPORT</div>
-                    <div className="report-panel">
-                        {isEditingReportLink ? (
-                            <div className="report-edit-group">
-                                <input
-                                    type="url"
-                                    value={reportLinkInput}
-                                    onChange={(e) => setReportLinkInput(e.target.value)}
-                                    placeholder="Enter report URL..."
-                                />
-                                <button className="success" onClick={handleSaveReportLink}>Save</button>
-                                <button onClick={() => setIsEditingReportLink(false)}>Cancel</button>
+        <>
+            <div className="modal-overlay" onClick={handleOverlayClick}>
+                <div className="modal-content event-details-modal" onClick={e => e.stopPropagation()}>
+                    <div className="details-header">
+                        <div className="details-title">{selectedEvent.name}</div>
+                        <button className="modal-close" onClick={onClose}>×</button>
+                    </div>
+                    <div className="detail-section">
+                        <div className="detail-section-title">📋 TROPICAL CYCLONE PRELIMINARY REPORT</div>
+                        <div className="report-panel">
+                            {isEditingReportLink ? (
+                                <div className="report-edit-group">
+                                    <input
+                                        type="url"
+                                        value={reportLinkInput}
+                                        onChange={(e) => setReportLinkInput(e.target.value)}
+                                        placeholder="Enter report URL..."
+                                    />
+                                    <button className="success" onClick={handleSaveReportLink}>Save</button>
+                                    <button onClick={() => setIsEditingReportLink(false)}>Cancel</button>
+                                </div>
+                            ) : (
+                                <div className="report-display-group">
+                                    {selectedEvent.reportLink ?
+                                        <a href={selectedEvent.reportLink} target="_blank" rel="noopener noreferrer">📄 View Report</a> :
+                                        <span>No report link</span>
+                                    }
+                                    {canEditEvents && (
+                                        <button className="edit-link-btn" onClick={() => {
+                                            setReportLinkInput(selectedEvent.reportLink || '');
+                                            setIsEditingReportLink(true);
+                                        }}>
+                                            ✏️ Add/Edit Link
+                                        </button>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                    <div className="details-grid">
+                        <div className="detail-box">
+                            <div className="detail-label">Category</div>
+                            <div className="detail-value">{selectedEvent.category || selectedEvent.type || '—'}</div>
+                        </div>
+                        <div className="detail-box">
+                            <div className="detail-label">Alert Level</div>
+                            <div className="detail-value">
+                                <span className="alert-badge" style={{ background: getAlertColor(selectedEvent.alertLevel) }}>
+                                    {selectedEvent.alertLevel || '—'}
+                                </span>
                             </div>
-                        ) : (
-                            <div className="report-display-group">
-                                {selectedEvent.reportLink ?
-                                    <a href={selectedEvent.reportLink} target="_blank" rel="noopener noreferrer">📄 View Report</a> :
-                                    <span>No report link</span>
-                                }
-                                {canEditEvents && (
-                                    <button className="edit-link-btn" onClick={() => {
-                                        setReportLinkInput(selectedEvent.reportLink || '');
-                                        setIsEditingReportLink(true);
-                                    }}>
-                                        ✏️ Add/Edit Link
-                                    </button>
+                        </div>
+                        <div className="detail-box">
+                            <div className="detail-label">Start Date</div>
+                            <div className="detail-value">{selectedEvent.startDateTime ? new Date(selectedEvent.startDateTime).toLocaleString() : selectedEvent.date || '—'}</div>
+                        </div>
+                        <div className="detail-box">
+                            <div className="detail-label">End Date</div>
+                            <div className="detail-value">{selectedEvent.endDateTime ? new Date(selectedEvent.endDateTime).toLocaleString() : 'Ongoing'}</div>
+                        </div>
+                    </div>
+                    <div className="detail-section">
+                        <div className="detail-section-title">📍 Deployment Scope</div>
+                        <div className="scope-tags">
+                            {selectedEvent.provinces?.map((p, i) => (
+                                <span key={i} className="scope-tag">{p}</span>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="detail-section">
+                        <div className="detail-section-title">🎯 Track & Intensity</div>
+                        <div className="summary-panel">
+                            <p><strong>Positions:</strong> {selectedEvent.trackPositions || 'Not specified'}</p>
+                            <p><strong>Intensity:</strong> {selectedEvent.intensity || 'Not specified'}</p>
+                        </div>
+                    </div>
+                    {selectedEvent.imageUrl && (
+                        <div className="detail-section">
+                            <img src={selectedEvent.imageUrl} alt="Event" className="event-image-preview" onClick={() => openImageModal(selectedEvent.imageUrl)} />
+                        </div>
+                    )}
+                    {(selectedEvent.casualties || selectedEvent.power_status || selectedEvent.communication_lines || selectedEvent.damage_facilities || selectedEvent.assistance_provided || selectedEvent.related_incidents) && (
+                        <div className="detail-section">
+                            <div className="detail-section-title">💔 Damage Effects</div>
+                            <div className="damage-summary-grid">
+                                {selectedEvent.related_incidents > 0 && (
+                                    <div className="damage-item">
+                                        <span className="damage-label">Related Incidents</span>
+                                        <span className="damage-value">{selectedEvent.related_incidents}</span>
+                                        {selectedEvent.remark_related_incidents && <span className="damage-remark">{selectedEvent.remark_related_incidents}</span>}
+                                    </div>
+                                )}
+                                {selectedEvent.casualties > 0 && (
+                                    <div className="damage-item">
+                                        <span className="damage-label">Casualties</span>
+                                        <span className="damage-value">{selectedEvent.casualties}</span>
+                                        {selectedEvent.remark_casualties && <span className="damage-remark">{selectedEvent.remark_casualties}</span>}
+                                    </div>
+                                )}
+                                {selectedEvent.power_status && (
+                                    <div className="damage-item">
+                                        <span className="damage-label">Power Status</span>
+                                        <span className="damage-value">{selectedEvent.power_status}</span>
+                                        {selectedEvent.remark_power_status && <span className="damage-remark">{selectedEvent.remark_power_status}</span>}
+                                    </div>
+                                )}
+                                {selectedEvent.communication_lines && (
+                                    <div className="damage-item">
+                                        <span className="damage-label">Communication Lines</span>
+                                        <span className="damage-value">{selectedEvent.communication_lines}</span>
+                                        {selectedEvent.remark_communication_lines && <span className="damage-remark">{selectedEvent.remark_communication_lines}</span>}
+                                    </div>
+                                )}
+                                {selectedEvent.damage_facilities && (
+                                    <div className="damage-item">
+                                        <span className="damage-label">Damage to Facilities</span>
+                                        <span className="damage-value">{selectedEvent.damage_facilities}</span>
+                                        {selectedEvent.remark_damage_facilities && <span className="damage-remark">{selectedEvent.remark_damage_facilities}</span>}
+                                    </div>
+                                )}
+                                {selectedEvent.assistance_provided && (
+                                    <div className="damage-item">
+                                        <span className="damage-label">Assistance Provided</span>
+                                        <span className="damage-value">{selectedEvent.assistance_provided}</span>
+                                        {selectedEvent.remark_assistance_provided && <span className="damage-remark">{selectedEvent.remark_assistance_provided}</span>}
+                                    </div>
+                                )}
+                                {selectedEvent.work_suspension && (
+                                    <div className="damage-item">
+                                        <span className="damage-label">Work Suspension</span>
+                                        <span className="damage-value">✓ Yes</span>
+                                        {selectedEvent.remark_work_suspension && <span className="damage-remark">{selectedEvent.remark_work_suspension}</span>}
+                                    </div>
                                 )}
                             </div>
-                        )}
-                    </div>
-                </div>
-                <div className="details-grid">
-                    <div className="detail-box">
-                        <div className="detail-label">Category</div>
-                        <div className="detail-value">{selectedEvent.category || selectedEvent.type || '—'}</div>
-                    </div>
-                    <div className="detail-box">
-                        <div className="detail-label">Alert Level</div>
-                        <div className="detail-value">
-                            <span className="alert-badge" style={{ background: getAlertColor(selectedEvent.alertLevel) }}>
-                                {selectedEvent.alertLevel || '—'}
-                            </span>
                         </div>
-                    </div>
-                    <div className="detail-box">
-                        <div className="detail-label">Start Date</div>
-                        <div className="detail-value">{selectedEvent.startDateTime ? new Date(selectedEvent.startDateTime).toLocaleString() : selectedEvent.date || '—'}</div>
-                    </div>
-                    <div className="detail-box">
-                        <div className="detail-label">End Date</div>
-                        <div className="detail-value">{selectedEvent.endDateTime ? new Date(selectedEvent.endDateTime).toLocaleString() : 'Ongoing'}</div>
-                    </div>
-                </div>
-                <div className="detail-section">
-                    <div className="detail-section-title">📍 Deployment Scope</div>
-                    <div className="scope-tags">
-                        {selectedEvent.provinces?.map((p, i) => (
-                            <span key={i} className="scope-tag">{p}</span>
-                        ))}
-                    </div>
-                </div>
-                <div className="detail-section">
-                    <div className="detail-section-title">🎯 Track & Intensity</div>
-                    <div className="summary-panel">
-                        <p><strong>Positions:</strong> {selectedEvent.trackPositions || 'Not specified'}</p>
-                        <p><strong>Intensity:</strong> {selectedEvent.intensity || 'Not specified'}</p>
-                    </div>
-                </div>
-                {selectedEvent.imageUrl && (
-                    <div className="detail-section">
-                        <img src={selectedEvent.imageUrl} alt="Event" className="event-image-preview" onClick={() => openImageModal(selectedEvent.imageUrl)} />
-                    </div>
-                )}
-                {(selectedEvent.casualties || selectedEvent.power_status || selectedEvent.communication_lines || selectedEvent.damage_facilities || selectedEvent.assistance_provided || selectedEvent.related_incidents) && (
-                    <div className="detail-section">
-                        <div className="detail-section-title">💔 Damage Effects</div>
-                        <div className="damage-summary-grid">
-                            {selectedEvent.related_incidents > 0 && (
-                                <div className="damage-item">
-                                    <span className="damage-label">Related Incidents</span>
-                                    <span className="damage-value">{selectedEvent.related_incidents}</span>
-                                    {selectedEvent.remark_related_incidents && <span className="damage-remark">{selectedEvent.remark_related_incidents}</span>}
-                                </div>
-                            )}
-                            {selectedEvent.casualties > 0 && (
-                                <div className="damage-item">
-                                    <span className="damage-label">Casualties</span>
-                                    <span className="damage-value">{selectedEvent.casualties}</span>
-                                    {selectedEvent.remark_casualties && <span className="damage-remark">{selectedEvent.remark_casualties}</span>}
-                                </div>
-                            )}
-                            {selectedEvent.power_status && (
-                                <div className="damage-item">
-                                    <span className="damage-label">Power Status</span>
-                                    <span className="damage-value">{selectedEvent.power_status}</span>
-                                    {selectedEvent.remark_power_status && <span className="damage-remark">{selectedEvent.remark_power_status}</span>}
-                                </div>
-                            )}
-                            {selectedEvent.communication_lines && (
-                                <div className="damage-item">
-                                    <span className="damage-label">Communication Lines</span>
-                                    <span className="damage-value">{selectedEvent.communication_lines}</span>
-                                    {selectedEvent.remark_communication_lines && <span className="damage-remark">{selectedEvent.remark_communication_lines}</span>}
-                                </div>
-                            )}
-                            {selectedEvent.damage_facilities && (
-                                <div className="damage-item">
-                                    <span className="damage-label">Damage to Facilities</span>
-                                    <span className="damage-value">{selectedEvent.damage_facilities}</span>
-                                    {selectedEvent.remark_damage_facilities && <span className="damage-remark">{selectedEvent.remark_damage_facilities}</span>}
-                                </div>
-                            )}
-                            {selectedEvent.assistance_provided && (
-                                <div className="damage-item">
-                                    <span className="damage-label">Assistance Provided</span>
-                                    <span className="damage-value">{selectedEvent.assistance_provided}</span>
-                                    {selectedEvent.remark_assistance_provided && <span className="damage-remark">{selectedEvent.remark_assistance_provided}</span>}
-                                </div>
-                            )}
-                            {selectedEvent.work_suspension && (
-                                <div className="damage-item">
-                                    <span className="damage-label">Work Suspension</span>
-                                    <span className="damage-value">✓ Yes</span>
-                                    {selectedEvent.remark_work_suspension && <span className="damage-remark">{selectedEvent.remark_work_suspension}</span>}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                )}
-                {selectedEvent.rejectionReason && (
-                    <div className="rejection-reason">
-                        <strong>Rejection reason:</strong> {selectedEvent.rejectionReason}
-                    </div>
-                )}
-                <div className="modal-buttons details-actions">
-                    {canEditEvents && (
-                        <>
-                            <button className="danger" onClick={() => handleDeleteEvent(selectedEvent.id)}>🗑️ Delete</button>
-                            <button className="success" onClick={() => handleEditEvent(selectedEvent)}>✏️ Edit</button>
-                        </>
                     )}
-                    <button className="modal-close-footer-btn" onClick={onClose}>Close</button>
+                    {selectedEvent.rejectionReason && (
+                        <div className="rejection-reason">
+                            <strong>Rejection reason:</strong> {selectedEvent.rejectionReason}
+                        </div>
+                    )}
+                    <div className="modal-buttons details-actions">
+                        {canEditEvents && (
+                            <>
+                                <button className="danger" onClick={() => handleDeleteEvent(selectedEvent.id)}>🗑️ Delete</button>
+                                <button className="success" onClick={() => handleEditEvent(selectedEvent)}>✏️ Edit</button>
+                                {selectedEvent.status === 'pending' && (
+                                    <button className="danger" onClick={handleRejectClick}>🚫 Reject</button>
+                                )}
+                            </>
+                        )}
+                        <button className="modal-close-footer-btn" onClick={onClose}>Close</button>
+                    </div>
                 </div>
             </div>
-        </div>
+            <RejectModal
+                isOpen={showRejectModal}
+                onClose={() => setShowRejectModal(false)}
+                onConfirm={handleRejectConfirm}
+                title="Reject Event"
+                itemName={selectedEvent?.name}
+            />
+        </>
     );
 };
 
@@ -1328,7 +1401,7 @@ const Dashboard = ({ onLogout, currentUser }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
 
-    // Modal states - FIXED: Using strict boolean states
+    // Modal states
     const [showAddModal, setShowAddModal] = useState(false);
     const [showDetailsModal, setShowDetailsModal] = useState(false);
     const [showOfficeModal, setShowOfficeModal] = useState(false);
@@ -1339,6 +1412,7 @@ const Dashboard = ({ onLogout, currentUser }) => {
     const [showUserModal, setShowUserModal] = useState(false);
     const [showImageModal, setShowImageModal] = useState(false);
     const [showNotificationsDropdown, setShowNotificationsDropdown] = useState(false);
+    const [showRejectEventModal, setShowRejectEventModal] = useState(false);
 
     const [selectedEvent, setSelectedEvent] = useState(null);
     const [isEditingEvent, setIsEditingEvent] = useState(false);
@@ -1659,6 +1733,261 @@ const Dashboard = ({ onLogout, currentUser }) => {
         setUsers(prev => prev.map(u => u.id === userId ? { ...u, ...updates } : u));
         addNotification('User Updated', `User ${updates.name || 'profile'} has been updated.`, 'info');
         showToast('User updated successfully.', 'success');
+    };
+
+    // ===== FIXED: Excel Export with proper formatting =====
+    const handleExportExcel = () => {
+        const sheetData = [];
+
+        // Headers with proper formatting
+        const headers = [
+            'PSTO Office',
+            'Warning Signals',
+            'General Weather',
+            'Related Incidents',
+            'Incident Remarks',
+            'Casualties',
+            'Casualty Remarks',
+            'Power Status',
+            'Power Remarks',
+            'Communication',
+            'Comm Remarks',
+            'Damage',
+            'Damage Remarks',
+            'Work Suspension',
+            'Work Suspension Remarks',
+            'Assistance',
+            'Assistance Remarks',
+            'Overall Remarks',
+            'Damage Building',
+            'Affected Staff'
+        ];
+
+        sheetData.push(headers);
+
+        // Data rows
+        Object.entries(officesData).forEach(([office, data]) => {
+            const signals = Object.entries(data.warning_signals || {})
+                .map(([mun, sig]) => `${mun}: ${sig}`)
+                .join('; ') || 'None';
+
+            const buildingDamages = (data.damage_details || [])
+                .map(d => `${d.description || ''}${d.cost ? ` (₱${d.cost})` : ''}`)
+                .join('; ');
+
+            const equipmentDamages = (data.equipment_details || [])
+                .map(e => `${e.name || ''}${e.description ? ` - ${e.description}` : ''}${e.cost ? ` (₱${e.cost})` : ''}`)
+                .join('; ');
+
+            const damages = [buildingDamages, equipmentDamages]
+                .filter(Boolean)
+                .join(' | ') || 'None';
+
+            const staff = (data.affected_staff || [])
+                .map(s => `${s.name || ''}${s.area ? ` - ${s.area}` : ''}`)
+                .join('; ') || 'None';
+
+            sheetData.push([
+                office,
+                signals,
+                data.general_weather || '',
+                data.related_incidents ?? 0,
+                data.remark_related_incidents || '',
+                data.casualties ?? 0,
+                data.remark_casualties || '',
+                data.power_status || '',
+                data.remark_power_status || '',
+                data.communication_lines || '',
+                data.remark_communication_lines || '',
+                data.damage_facilities || '',
+                data.remark_damage_facilities || '',
+                data.work_suspension ? 'Yes' : 'No',
+                data.remark_work_suspension || '',
+                data.assistance_provided || '',
+                data.remark_assistance_provided || '',
+                data.remark || '',
+                damages || '',
+                staff || ''
+            ]);
+        });
+
+        // Create workbook
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.aoa_to_sheet(sheetData);
+
+        // ===== FIX: Auto-fit column widths =====
+        const colWidths = [];
+        const maxCols = sheetData.reduce((max, row) => Math.max(max, row.length), 0);
+
+        for (let col = 0; col < maxCols; col++) {
+            let maxWidth = 20; // Minimum width
+            for (let row = 0; row < sheetData.length; row++) {
+                const cell = sheetData[row]?.[col];
+                if (cell !== undefined && cell !== null) {
+                    const cellStr = String(cell);
+                    // Calculate approximate width (characters * 1.2 for padding)
+                    const width = Math.ceil(cellStr.length * 1.2);
+                    if (width > maxWidth) {
+                        maxWidth = Math.min(width, 50); // Cap at 50 for readability
+                    }
+                }
+            }
+            colWidths.push({ wch: maxWidth });
+        }
+        ws['!cols'] = colWidths;
+
+        // ===== FIX: Header row formatting =====
+        // Add range for header row
+        const range = XLSX.utils.decode_range(ws['!ref']);
+
+        // Apply header formatting
+        for (let col = range.s.c; col <= range.e.c; col++) {
+            const address = XLSX.utils.encode_cell({ r: 0, c: col });
+            if (!ws[address]) continue;
+
+            // Create cell with formatting
+            ws[address] = {
+                ...ws[address],
+                s: {
+                    font: {
+                        bold: true,
+                        sz: 12,
+                        color: { rgb: "FFFFFF" }
+                    },
+                    fill: {
+                        fgColor: { rgb: "1a56db" } // Blue background
+                    },
+                    alignment: {
+                        horizontal: 'center',
+                        vertical: 'center',
+                        wrapText: true
+                    },
+                    border: {
+                        top: { style: 'thin', color: { rgb: "000000" } },
+                        bottom: { style: 'thin', color: { rgb: "000000" } },
+                        left: { style: 'thin', color: { rgb: "000000" } },
+                        right: { style: 'thin', color: { rgb: "000000" } }
+                    }
+                }
+            };
+        }
+
+        // Apply wrap text for all cells
+        for (let r = range.s.r; r <= range.e.r; r++) {
+            for (let c = range.s.c; c <= range.e.c; c++) {
+                const address = XLSX.utils.encode_cell({ r, c });
+                if (!ws[address]) continue;
+                if (r === 0) continue; // Skip header (already formatted)
+
+                ws[address] = {
+                    ...ws[address],
+                    s: {
+                        ...ws[address].s,
+                        alignment: {
+                            wrapText: true,
+                            vertical: 'center'
+                        }
+                    }
+                };
+            }
+        }
+
+        // Append sheet to workbook
+        XLSX.utils.book_append_sheet(wb, ws, 'PSTO_Report');
+
+        // Generate file
+        XLSX.writeFile(wb, `DOST1_Report_${new Date().toISOString().slice(0, 19)}.xlsx`);
+        showToast('Excel report exported successfully.', 'success');
+        addNotification('Excel Exported', 'Report exported to Excel with proper formatting.', 'success');
+    };
+
+    // ===== FIXED: Reject Event Handler =====
+    const handleRejectEvent = (eventId, reason) => {
+        if (!reason || !reason.trim()) {
+            showToast('Please provide a rejection reason.', 'warning');
+            return;
+        }
+
+        // Update events state
+        const updatedEvents = events.map(event => {
+            if (event.id === eventId) {
+                return {
+                    ...event,
+                    status: 'rejected',
+                    rejectionReason: reason,
+                    deployment: 'Draft'
+                };
+            }
+            return event;
+        });
+
+        setEvents(updatedEvents);
+
+        // Update selected event if it's the same
+        if (selectedEvent?.id === eventId) {
+            setSelectedEvent({
+                ...selectedEvent,
+                status: 'rejected',
+                rejectionReason: reason,
+                deployment: 'Draft'
+            });
+        }
+
+        // Close details modal
+        setShowDetailsModal(false);
+
+        // Add notification
+        const eventName = events.find(e => e.id === eventId)?.name;
+        addNotification(
+            'Event Rejected',
+            `Event "${eventName}" has been rejected. Reason: ${reason}`,
+            'error'
+        );
+        showToast(`Event "${eventName}" rejected.`, 'error');
+
+        // Sync to localStorage (API call simulation)
+        try {
+            saveToStorage('dash_events', updatedEvents);
+            // In a real app, you would make an API call here:
+            // await fetch('/api/events/reject', { method: 'POST', body: JSON.stringify({ eventId, reason }) });
+        } catch (error) {
+            console.error('Failed to sync rejection:', error);
+            showToast('Failed to sync rejection to database.', 'error');
+        }
+    };
+
+    // ===== FIXED: Reject Report Handler =====
+    const handleRejectReport = (reportId, reason) => {
+        if (!reason || !reason.trim()) {
+            showToast('Please provide a rejection reason.', 'warning');
+            return;
+        }
+
+        setPendingReports(prev => prev.map(r =>
+            r.id === reportId
+                ? { ...r, status: 'rejected', remarks: reason }
+                : r
+        ));
+
+        const report = pendingReports.find(r => r.id === reportId);
+        addNotification(
+            'Report Rejected',
+            `Report from ${report?.office || 'Unknown office'} was rejected. Reason: ${reason}`,
+            'error'
+        );
+        showToast('Report rejected.', 'error');
+
+        // Sync to localStorage
+        try {
+            const updatedReports = pendingReports.map(r =>
+                r.id === reportId
+                    ? { ...r, status: 'rejected', remarks: reason }
+                    : r
+            );
+            saveToStorage('dash_pendingReports', updatedReports);
+        } catch (error) {
+            console.error('Failed to sync rejection:', error);
+        }
     };
 
     // ----------------------------- REPORT FUNCTIONS -----------------------------
@@ -2225,7 +2554,6 @@ const Dashboard = ({ onLogout, currentUser }) => {
         }));
     };
 
-    // ===== FIXED: Region 1 Save =====
     const handleSave = () => {
         if (selectedOffice === 'PSTO-Region-1') {
             showToast('Cannot save Region 1 data directly. Select a specific PSTO office.', 'warning');
@@ -2677,31 +3005,6 @@ const Dashboard = ({ onLogout, currentUser }) => {
         URL.revokeObjectURL(url);
     };
 
-    const handleExportExcel = () => {
-        const sheetData = [];
-        sheetData.push(['PSTO Office', 'Warning Signals', 'General Weather', 'Related Incidents', 'Incident Remarks', 'Casualties', 'Casualty Remarks', 'Power Status', 'Power Remarks', 'Communication', 'Comm Remarks', 'Damage', 'Damage Remarks', 'Work Suspension', 'Work Suspension Remarks', 'Assistance', 'Assistance Remarks', 'Overall Remarks', 'Damage Building', 'Affected Staff']);
-        Object.entries(officesData).forEach(([office, data]) => {
-            const signals = Object.entries(data.warning_signals || {}).map(([mun, sig]) => `${mun}: ${sig}`).join('; ') || 'None';
-            const buildingDamages = (data.damage_details || []).map(d => `${d.description || ''}${d.cost ? ` (₱${d.cost})` : ''}`).join('; ');
-            const equipmentDamages = (data.equipment_details || []).map(e => `${e.name || ''}${e.description ? ` - ${e.description}` : ''}${e.cost ? ` (₱${e.cost})` : ''}`).join('; ');
-            const damages = [buildingDamages, equipmentDamages].filter(Boolean).join(' | ') || 'None';
-            const staff = (data.affected_staff || []).map(s => `${s.name || ''}${s.area ? ` - ${s.area}` : ''}`).join('; ') || 'None';
-            sheetData.push([
-                office, signals, data.general_weather || '', data.related_incidents ?? 0, data.remark_related_incidents || '',
-                data.casualties ?? 0, data.remark_casualties || '', data.power_status || '', data.remark_power_status || '',
-                data.communication_lines || '', data.remark_communication_lines || '', data.damage_facilities || '',
-                data.remark_damage_facilities || '', data.work_suspension ? 'Yes' : 'No', data.remark_work_suspension || '',
-                data.assistance_provided || '', data.remark_assistance_provided || '', data.remark || '',
-                damages || '', staff || ''
-            ]);
-        });
-        const ws = XLSX.utils.aoa_to_sheet(sheetData);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, 'PSTO_Report');
-        XLSX.writeFile(wb, `DOST1_Report_${new Date().toISOString().slice(0, 19)}.xlsx`);
-        showToast('Excel report exported successfully.', 'success');
-    };
-
     const regionSummary = {
         offices: Object.keys(officesData).length,
         incidents: Object.values(officesData).reduce((sum, office) => sum + (office.related_incidents || 0), 0),
@@ -2761,7 +3064,6 @@ const Dashboard = ({ onLogout, currentUser }) => {
     const displayEvent = editMode ? formData : currentOfficeData;
     const municipalitiesList = displayEvent?.municipalities || [];
 
-    // FIXED: Updated officeStatusRemarks to include all fields with proper handling
     const officeStatusRemarks = [
         { label: 'Incident', value: currentOfficeData.related_incidents, remark: currentOfficeData.remark_related_incidents || '' },
         { label: 'Casualties', value: currentOfficeData.casualties, remark: currentOfficeData.remark_casualties || '' },
@@ -2793,17 +3095,15 @@ const Dashboard = ({ onLogout, currentUser }) => {
         { label: 'Assistance Provided', value: currentOfficeData.assistance_provided || 'Not specified', remark: currentOfficeData.remark_assistance_provided || '' }
     ];
 
-    // ===== FIXED: Office Click Handler - Opens modal with proper state =====
+    // ===== Office Click Handler =====
     const handleOfficeClick = (officeName) => {
         setSelectedOffice(officeName);
         setEditMode(false);
         setShowOfficeModal(true);
     };
 
-    // ===== FIXED: Close Office Modal =====
     const handleCloseOfficeModal = () => {
         setShowOfficeModal(false);
-        // Don't reset selectedOffice immediately to allow smooth transition
     };
 
     const handleEditToggle = () => {
@@ -2914,7 +3214,7 @@ const Dashboard = ({ onLogout, currentUser }) => {
         setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
     };
 
-    // ======================== DASHBOARD CONTENT (Render function instead of component) ========================
+    // ======================== DASHBOARD CONTENT ========================
     const renderDashboardContent = () => (
         <div>
             <ToastBanner toast={toast} setToast={setToast} />
@@ -3375,7 +3675,6 @@ const Dashboard = ({ onLogout, currentUser }) => {
                 </div>
             </div>
 
-            {/* ===== FIXED: Office Modal with proper state management ===== */}
             <OfficeModal
                 isOpen={showOfficeModal}
                 onClose={handleCloseOfficeModal}
@@ -3615,7 +3914,7 @@ const Dashboard = ({ onLogout, currentUser }) => {
                 )}
             </div>
 
-            {/* ===== FIXED: All Modals with proper state management ===== */}
+            {/* Modals */}
             <EventDetailsModal
                 isOpen={showDetailsModal}
                 onClose={handleCloseDetailsModal}
@@ -3630,6 +3929,7 @@ const Dashboard = ({ onLogout, currentUser }) => {
                 handleEditEvent={handleEditEvent}
                 getAlertColor={getAlertColor}
                 openImageModal={openImageModal}
+                handleRejectEvent={handleRejectEvent}
             />
 
             <AddEventModal
