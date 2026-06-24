@@ -1,0 +1,38 @@
+# Ignore Node dependency directories
+node_modules/
+jspm_packages/
+web_modules/
+
+# Ignore production builds
+build/
+dist/
+out/
+
+# Ignore log files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+*.log
+
+# Ignore environment files
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+.env.*.local
+
+# Ignore OS-specific files
+.DS_Store
+Thumbs.db
+
+# Ignore Git directory
+.git/
+.gitignore
+
+# Ignore Docker files from copying inside the image
+Dockerfile*
+docker-compose*
+README-DOCKER.md

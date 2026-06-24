@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  # ==========================================
+  # Express API Backend
+  # ==========================================
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    # Runs the PostgreSQL-backed Express server by default.
+    # To run the simple mock in-memory server, change this command to: node simple-server.js
+    command: node server.js
+    ports:
+      - "5001:5001" # Postgres API Server Port
+      - "5005:5005" # In-memory API Server Port
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - PORT=5001
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME}
+    env_file:
+      - .env
+    networks:
+      - dost-net
+
+  # ==========================================
+  # React Frontend (Development server)
+  # ==========================================
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    command: npm start
+    ports:
+      - "3000:3000" # React Dev Server Port
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - BROWSER=none          # Prevent opening browser tab inside container
+      - WDS_SOCKET_PORT=3000  # Hot-reloading socket port
+    stdin_open: true          # Keeps the react-scripts terminal active
+    tty: true                 # Connects standard input/output channels
+    depends_on:
+      - backend
+    networks:
+      - dost-net
+
+networks:
+  dost-net:
+    driver: bridge
