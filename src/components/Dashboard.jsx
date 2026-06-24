@@ -637,7 +637,7 @@ const OfficeModal = ({
     );
 };
 
-// ===== ADD/EDIT EVENT MODAL =====
+// ===== ADD/EDIT EVENT MODAL - MODERN DESIGN =====
 const AddEventModal = ({
     isOpen,
     onClose,
@@ -679,15 +679,16 @@ const AddEventModal = ({
 
     return (
         <div className="modal-overlay" onClick={handleOverlayClick}>
-            <div className="modal-content large-modal" onClick={e => e.stopPropagation()}>
-                <div className="modal-header">
-                    <h3>{isEditingEvent ? '✏️ Edit Event' : '🌪️ Add New Event'}</h3>
+            <div className="modal-content large-modal modern-modal" onClick={e => e.stopPropagation()}>
+                <div className="modal-header modern-modal-header">
+                    <h3 className="modal-title">{isEditingEvent ? '✏️ Edit Event' : '🌪️ Add New Event'}</h3>
                     <button type="button" className="modal-close" onClick={onClose}>×</button>
                 </div>
-                <form onSubmit={(e) => { e.preventDefault(); handleAddEvent(); }} className="event-form">
-                    <div className="form-section">
+                <form onSubmit={(e) => { e.preventDefault(); handleAddEvent(); }} className="event-form modern-form">
+                    {/* Basic Information - Two Column Grid */}
+                    <div className="form-section modern-form-section">
                         <h4 className="form-section-title">📋 Basic Information</h4>
-                        <div className="form-row">
+                        <div className="form-grid-2">
                             <div className="form-group">
                                 <label>Event Name *</label>
                                 <input
@@ -697,24 +698,8 @@ const AddEventModal = ({
                                     onChange={(e) => handleNewEventFieldChange('name', e.target.value)}
                                     required
                                     placeholder="e.g., Typhoon Kristine"
-                                    className="form-input"
+                                    className="form-input modern-input"
                                 />
-                            </div>
-                        </div>
-                        <div className="form-row">
-                            <div className="form-group">
-                                <label>Alert Level</label>
-                                <select
-                                    name="alertLevel"
-                                    value={newEvent.alertLevel}
-                                    onChange={(e) => handleNewEventFieldChange('alertLevel', e.target.value)}
-                                    className="form-select"
-                                >
-                                    <option value="">-- Select --</option>
-                                    <option value="RED">🔴 RED</option>
-                                    <option value="BLUE">🔵 BLUE</option>
-                                    <option value="WHITE">⚪ WHITE</option>
-                                </select>
                             </div>
                             <div className="form-group">
                                 <label>Category</label>
@@ -722,7 +707,7 @@ const AddEventModal = ({
                                     name="category"
                                     value={newEvent.category}
                                     onChange={(e) => handleNewEventFieldChange('category', e.target.value)}
-                                    className="form-select"
+                                    className="form-select modern-select"
                                 >
                                     <option value="">-- Select --</option>
                                     <option value="Super Typhoon">🌪️ Super Typhoon</option>
@@ -733,37 +718,67 @@ const AddEventModal = ({
                                 </select>
                             </div>
                         </div>
+                        <div className="form-grid-2">
+                            <div className="form-group">
+                                <label>Alert Level</label>
+                                <select
+                                    name="alertLevel"
+                                    value={newEvent.alertLevel}
+                                    onChange={(e) => handleNewEventFieldChange('alertLevel', e.target.value)}
+                                    className="form-select modern-select"
+                                >
+                                    <option value="">-- Select --</option>
+                                    <option value="RED">🔴 RED</option>
+                                    <option value="BLUE">🔵 BLUE</option>
+                                    <option value="WHITE">⚪ WHITE</option>
+                                </select>
+                            </div>
+                            <div className="form-group">
+                                <label>Deployment Status</label>
+                                <select
+                                    name="deployment"
+                                    value={newEvent.deployment}
+                                    onChange={(e) => handleNewEventFieldChange('deployment', e.target.value)}
+                                    className="form-select modern-select"
+                                >
+                                    <option value="Draft">📄 Draft</option>
+                                    <option value="Deployed">🚀 Deployed</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
 
-                    <div className="form-section">
+                    {/* Date & Time - Two Column Grid */}
+                    <div className="form-section modern-form-section">
                         <h4 className="form-section-title">📅 Date & Time</h4>
-                        <div className="datetime-row">
-                            <div className="datetime-group">
+                        <div className="form-grid-2">
+                            <div className="form-group">
                                 <label>Start Date/Time</label>
                                 <input
                                     type="datetime-local"
                                     name="startDateTime"
                                     value={newEvent.startDateTime}
                                     onChange={(e) => handleNewEventFieldChange('startDateTime', e.target.value)}
-                                    className="form-input"
+                                    className="form-input modern-input"
                                 />
                             </div>
-                            <div className="datetime-group">
+                            <div className="form-group">
                                 <label>End Date/Time</label>
                                 <input
                                     type="datetime-local"
                                     name="endDateTime"
                                     value={newEvent.endDateTime}
                                     onChange={(e) => handleNewEventFieldChange('endDateTime', e.target.value)}
-                                    className="form-input"
+                                    className="form-input modern-input"
                                 />
                             </div>
                         </div>
                     </div>
 
-                    <div className="form-section">
+                    {/* Track & Intensity - Two Column Grid */}
+                    <div className="form-section modern-form-section">
                         <h4 className="form-section-title">🎯 Track & Intensity</h4>
-                        <div className="form-row">
+                        <div className="form-grid-2">
                             <div className="form-group">
                                 <label>Track Positions</label>
                                 <input
@@ -772,7 +787,7 @@ const AddEventModal = ({
                                     value={newEvent.trackPositions}
                                     onChange={(e) => handleNewEventFieldChange('trackPositions', e.target.value)}
                                     placeholder="e.g., 13.0N 121.2E → 13.8N 122.1E"
-                                    className="form-input"
+                                    className="form-input modern-input"
                                 />
                             </div>
                             <div className="form-group">
@@ -783,228 +798,23 @@ const AddEventModal = ({
                                     value={newEvent.intensity}
                                     onChange={(e) => handleNewEventFieldChange('intensity', e.target.value)}
                                     placeholder="e.g., 95 kph / 52 kt"
-                                    className="form-input"
+                                    className="form-input modern-input"
                                 />
                             </div>
                         </div>
                     </div>
 
-                    <div className="form-section">
-                        <h4 className="form-section-title">🌤️ Weather & Report</h4>
-                        <div className="form-row">
-                            <div className="form-group">
-                                <label>General Weather</label>
-                                <input
-                                    type="text"
-                                    name="general_weather"
-                                    value={newEvent.general_weather}
-                                    onChange={(e) => handleNewEventFieldChange('general_weather', e.target.value)}
-                                    placeholder="e.g., Rainy with strong winds"
-                                    className="form-input"
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label>Report Link</label>
-                                <input
-                                    type="url"
-                                    name="reportLink"
-                                    value={newEvent.reportLink}
-                                    onChange={(e) => handleNewEventFieldChange('reportLink', e.target.value)}
-                                    placeholder="https://..."
-                                    className="form-input"
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="form-section">
-                        <h4 className="form-section-title">📊 Damage & Impact</h4>
-                        <div className="form-row">
-                            <div className="form-group">
-                                <label>Related Incidents</label>
-                                <input
-                                    type="number"
-                                    name="related_incidents"
-                                    value={newEvent.related_incidents}
-                                    placeholder="0"
-                                    onChange={(e) => {
-                                        const value = e.target.value;
-                                        handleNewEventFieldChange('related_incidents', value === '' ? '' : parseInt(value, 10));
-                                    }}
-                                    className="form-input"
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label>Incident Remarks</label>
-                                <input
-                                    type="text"
-                                    name="remark_related_incidents"
-                                    value={newEvent.remark_related_incidents}
-                                    placeholder="Remarks..."
-                                    onChange={(e) => handleNewEventFieldChange('remark_related_incidents', e.target.value)}
-                                    className="form-input"
-                                />
-                            </div>
-                        </div>
-                        <div className="form-row">
-                            <div className="form-group">
-                                <label>Casualties</label>
-                                <input
-                                    type="number"
-                                    name="casualties"
-                                    value={newEvent.casualties}
-                                    placeholder="0"
-                                    onChange={(e) => {
-                                        const value = e.target.value;
-                                        handleNewEventFieldChange('casualties', value === '' ? '' : parseInt(value, 10));
-                                    }}
-                                    className="form-input"
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label>Casualty Remarks</label>
-                                <input
-                                    type="text"
-                                    name="remark_casualties"
-                                    value={newEvent.remark_casualties}
-                                    placeholder="Remarks..."
-                                    onChange={(e) => handleNewEventFieldChange('remark_casualties', e.target.value)}
-                                    className="form-input"
-                                />
-                            </div>
-                        </div>
-                        <div className="form-row">
-                            <div className="form-group">
-                                <label>Power Status</label>
-                                <input
-                                    type="text"
-                                    name="power_status"
-                                    value={newEvent.power_status}
-                                    placeholder="e.g., On, Off, Intermittent"
-                                    onChange={(e) => handleNewEventFieldChange('power_status', e.target.value)}
-                                    className="form-input"
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label>Power Remarks</label>
-                                <input
-                                    type="text"
-                                    name="remark_power_status"
-                                    value={newEvent.remark_power_status}
-                                    placeholder="Remarks..."
-                                    onChange={(e) => handleNewEventFieldChange('remark_power_status', e.target.value)}
-                                    className="form-input"
-                                />
-                            </div>
-                        </div>
-                        <div className="form-row">
-                            <div className="form-group">
-                                <label>Communication Lines</label>
-                                <input
-                                    type="text"
-                                    name="communication_lines"
-                                    value={newEvent.communication_lines}
-                                    placeholder="e.g., Working, Down"
-                                    onChange={(e) => handleNewEventFieldChange('communication_lines', e.target.value)}
-                                    className="form-input"
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label>Communication Remarks</label>
-                                <input
-                                    type="text"
-                                    name="remark_communication_lines"
-                                    value={newEvent.remark_communication_lines}
-                                    placeholder="Remarks..."
-                                    onChange={(e) => handleNewEventFieldChange('remark_communication_lines', e.target.value)}
-                                    className="form-input"
-                                />
-                            </div>
-                        </div>
-                        <div className="form-row">
-                            <div className="form-group">
-                                <label>Damage to Facilities</label>
-                                <input
-                                    type="text"
-                                    name="damage_facilities"
-                                    value={newEvent.damage_facilities}
-                                    placeholder="e.g., Minor, Major"
-                                    onChange={(e) => handleNewEventFieldChange('damage_facilities', e.target.value)}
-                                    className="form-input"
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label>Damage Remarks</label>
-                                <input
-                                    type="text"
-                                    name="remark_damage_facilities"
-                                    value={newEvent.remark_damage_facilities}
-                                    placeholder="Remarks..."
-                                    onChange={(e) => handleNewEventFieldChange('remark_damage_facilities', e.target.value)}
-                                    className="form-input"
-                                />
-                            </div>
-                        </div>
-                        <div className="form-row">
-                            <div className="form-group checkbox-group">
-                                <label>
-                                    <input
-                                        type="checkbox"
-                                        name="work_suspension"
-                                        checked={newEvent.work_suspension}
-                                        onChange={(e) => handleNewEventFieldChange('work_suspension', e.target.checked)}
-                                    />
-                                    Work Suspension
-                                </label>
-                            </div>
-                            <div className="form-group">
-                                <label>Work Suspension Remarks</label>
-                                <input
-                                    type="text"
-                                    name="remark_work_suspension"
-                                    value={newEvent.remark_work_suspension}
-                                    placeholder="Remarks..."
-                                    onChange={(e) => handleNewEventFieldChange('remark_work_suspension', e.target.value)}
-                                    className="form-input"
-                                />
-                            </div>
-                        </div>
-                        <div className="form-row">
-                            <div className="form-group">
-                                <label>Assistance Provided</label>
-                                <input
-                                    type="text"
-                                    name="assistance_provided"
-                                    value={newEvent.assistance_provided}
-                                    placeholder="e.g., Relief, Evacuation"
-                                    onChange={(e) => handleNewEventFieldChange('assistance_provided', e.target.value)}
-                                    className="form-input"
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label>Assistance Remarks</label>
-                                <input
-                                    type="text"
-                                    name="remark_assistance_provided"
-                                    value={newEvent.remark_assistance_provided}
-                                    placeholder="Remarks..."
-                                    onChange={(e) => handleNewEventFieldChange('remark_assistance_provided', e.target.value)}
-                                    className="form-input"
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="form-section">
+                    {/* Affected Areas */}
+                    <div className="form-section modern-form-section">
                         <h4 className="form-section-title">📍 Affected Areas</h4>
-                        <div className="scope-grid">
+                        <div className="scope-grid-modern">
                             {allProvinces.map(p => {
                                 const selected = newEvent.provinces.includes(p);
                                 return (
                                     <button
                                         type="button"
                                         key={p}
-                                        className={`scope-item ${selected ? 'selected' : ''}`}
+                                        className={`scope-item-modern ${selected ? 'selected' : ''}`}
                                         onClick={() => {
                                             setNewEvent(prev => {
                                                 const provinces = selected ? prev.provinces.filter(x => x !== p) : [...prev.provinces, p];
@@ -1022,7 +832,7 @@ const AddEventModal = ({
                             })}
                         </div>
                         <div className="form-group" style={{ marginTop: '12px' }}>
-                            <label className="checkbox-group">
+                            <label className="checkbox-group modern-checkbox">
                                 <input
                                     type="checkbox"
                                     name="sendToAllUsers"
@@ -1041,7 +851,8 @@ const AddEventModal = ({
                         </div>
                     </div>
 
-                    <div className="form-section">
+                    {/* Event Image */}
+                    <div className="form-section modern-form-section">
                         <h4 className="form-section-title">🖼️ Event Image</h4>
                         <div className="form-group">
                             <input
@@ -1055,7 +866,7 @@ const AddEventModal = ({
                                         reader.readAsDataURL(file);
                                     }
                                 }}
-                                className="form-input"
+                                className="form-input modern-input"
                             />
                             {newEvent.imageUrl && (
                                 <div className="image-preview-container" style={{ marginTop: '12px' }}>
@@ -1072,11 +883,11 @@ const AddEventModal = ({
                         </div>
                     </div>
 
-                    <div className="modal-buttons">
-                        <button type="submit" className="success">
+                    <div className="modal-buttons modern-modal-buttons">
+                        <button type="submit" className="btn-primary">
                             {isEditingEvent ? '💾 Save Changes' : '🌪️ Create Event'}
                         </button>
-                        <button type="button" onClick={onClose}>Cancel</button>
+                        <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
                     </div>
                 </form>
             </div>
@@ -1289,14 +1100,14 @@ const EventDetailsModal = ({
                     <div className="modal-buttons details-actions">
                         {canEditEvents && (
                             <>
-                                <button className="danger" onClick={() => handleDeleteEvent(selectedEvent.id)}>🗑️ Delete</button>
-                                <button className="success" onClick={() => handleEditEvent(selectedEvent)}>✏️ Edit</button>
+                                <button className="btn-danger" onClick={() => handleDeleteEvent(selectedEvent.id)}>🗑️ Delete</button>
+                                <button className="btn-primary" onClick={() => handleEditEvent(selectedEvent)}>✏️ Edit</button>
                                 {selectedEvent.status === 'pending' && (
-                                    <button className="danger" onClick={handleRejectClick}>🚫 Reject</button>
+                                    <button className="btn-danger" onClick={handleRejectClick}>🚫 Reject</button>
                                 )}
                             </>
                         )}
-                        <button className="modal-close-footer-btn" onClick={onClose}>Close</button>
+                        <button className="btn-secondary" onClick={onClose}>Close</button>
                     </div>
                 </div>
             </div>
@@ -1412,7 +1223,6 @@ const Dashboard = ({ onLogout, currentUser }) => {
     const [showUserModal, setShowUserModal] = useState(false);
     const [showImageModal, setShowImageModal] = useState(false);
     const [showNotificationsDropdown, setShowNotificationsDropdown] = useState(false);
-    const [showRejectEventModal, setShowRejectEventModal] = useState(false);
 
     const [selectedEvent, setSelectedEvent] = useState(null);
     const [isEditingEvent, setIsEditingEvent] = useState(false);
@@ -1735,11 +1545,364 @@ const Dashboard = ({ onLogout, currentUser }) => {
         showToast('User updated successfully.', 'success');
     };
 
-    // ===== FIXED: Excel Export with proper formatting =====
+    // ===== FIXED: Excel Export with proper table formatting =====
     const handleExportExcel = () => {
-        const sheetData = [];
+        const wb = XLSX.utils.book_new();
 
-        // Headers with proper formatting
+        // ===== SHEET 1: Main Report with Tables =====
+        const reportData = [];
+
+        // Title Section
+        reportData.push(['SITUATIONAL REPORT']);
+        reportData.push([]);
+        reportData.push(['SITUATIONAL REPORT NO.', '2']);
+        reportData.push(['TROPICAL CYCLONE:', activeEvent?.name || 'N/A']);
+        reportData.push(['CATEGORY:', activeEvent?.category || 'N/A']);
+        reportData.push(['DATE:', new Date().toLocaleString()]);
+        reportData.push([]);
+
+        // I. SITUATION SUMMARY
+        reportData.push(['I. SITUATION SUMMARY']);
+        reportData.push([]);
+        reportData.push(['A. GENERAL WEATHER CONDITION']);
+
+        // Weather Table Headers
+        reportData.push(['PROVINCE', 'TROPICAL CYCLONE WARNING SIGNAL', 'GENERAL WEATHER SITUATION']);
+
+        // Weather Data
+        const provinces = ['Ilocos Norte', 'Ilocos Sur', 'La Union', 'Pangasinan'];
+        provinces.forEach(prov => {
+            const officeKey = Object.keys(officesData).find(key => key.includes(prov));
+            const data = officeKey ? officesData[officeKey] : null;
+            const signals = data?.warning_signals ?
+                Object.entries(data.warning_signals).map(([mun, sig]) => `${mun} (Signal ${sig})`).join('; ') :
+                'No signal';
+            reportData.push([prov, signals, data?.general_weather || '']);
+        });
+        reportData.push([]);
+
+        // II. EFFECTS
+        reportData.push(['II. EFFECTS']);
+        reportData.push([]);
+
+        // A. RELATED INCIDENTS
+        reportData.push(['A. RELATED INCIDENTS']);
+        reportData.push(['OFFICE', 'INCIDENTS', 'REMARKS']);
+        Object.entries(officesData).forEach(([office, data]) => {
+            const incidents = data.related_incidents || 0;
+            reportData.push([
+                office,
+                `${incidents} - ${incidents === 0 ? 'No incidents reported' : incidents + ' incident(s) reported'}`,
+                data.remark_related_incidents || ''
+            ]);
+        });
+        reportData.push([]);
+
+        // B. CASUALTIES
+        reportData.push(['B. CASUALTIES']);
+        reportData.push(['PROVINCE', 'CASUALTIES', 'REMARKS']);
+        Object.entries(officesData).forEach(([office, data]) => {
+            const casualties = data.casualties || 0;
+            reportData.push([
+                office,
+                `${casualties} - ${casualties === 0 ? 'No casualties reported' : casualties + ' casualty(ies) reported'}`,
+                data.remark_casualties || ''
+            ]);
+        });
+        reportData.push([]);
+
+        // C. POWER
+        reportData.push(['C. POWER']);
+        reportData.push(['PROVINCE', 'POWER STATUS', 'REMARKS']);
+        Object.entries(officesData).forEach(([office, data]) => {
+            reportData.push([
+                office,
+                data.power_status || '0 - No data',
+                data.remark_power_status || ''
+            ]);
+        });
+        reportData.push([]);
+
+        // D. COMMUNICATION LINES
+        reportData.push(['D. COMMUNICATION LINES']);
+        reportData.push(['PROVINCE', 'COMMUNICATION STATUS', 'REMARKS']);
+        Object.entries(officesData).forEach(([office, data]) => {
+            reportData.push([
+                office,
+                data.communication_lines || '0 - No data',
+                data.remark_communication_lines || ''
+            ]);
+        });
+        reportData.push([]);
+
+        // E. DAMAGE TO FACILITIES/EQUIPMENT
+        reportData.push(['E. DAMAGE TO FACILITIES/EQUIPMENT']);
+        reportData.push(['PROVINCE', 'DAMAGE STATUS', 'REMARKS']);
+        Object.entries(officesData).forEach(([office, data]) => {
+            reportData.push([
+                office,
+                data.damage_facilities || '0 - No damage reported',
+                data.remark_damage_facilities || ''
+            ]);
+        });
+        reportData.push([]);
+
+        // F. WORK SUSPENSION
+        reportData.push(['F. WORK SUSPENSION']);
+        reportData.push(['PROVINCE', 'SUSPENSION STATUS', 'REMARKS']);
+        Object.entries(officesData).forEach(([office, data]) => {
+            const suspension = data.work_suspension ? '1 - Work Suspension declared' : '0 - No suspension';
+            reportData.push([
+                office,
+                suspension,
+                data.remark_work_suspension || ''
+            ]);
+        });
+        reportData.push([]);
+
+        // G. ASSISTANCE PROVIDED
+        reportData.push(['G. ASSISTANCE PROVIDED']);
+        reportData.push(['PROVINCE', 'ASSISTANCE', 'REMARKS']);
+        Object.entries(officesData).forEach(([office, data]) => {
+            reportData.push([
+                office,
+                data.assistance_provided || 'None',
+                data.remark_assistance_provided || ''
+            ]);
+        });
+        reportData.push([]);
+
+        // ===== DAMAGE BUILDING DETAILS TABLE =====
+        reportData.push(['DAMAGE BUILDING DETAILS']);
+        reportData.push(['PROVINCE', 'DESCRIPTION', 'COST', 'STATUS', 'DATE']);
+        let hasBuildingDamage = false;
+        Object.entries(officesData).forEach(([office, data]) => {
+            if (data.damage_details && data.damage_details.length > 0) {
+                hasBuildingDamage = true;
+                data.damage_details.forEach(damage => {
+                    reportData.push([
+                        office,
+                        damage.description || '',
+                        damage.cost ? `₱${damage.cost}` : '',
+                        damage.status || 'Reported',
+                        damage.date ? new Date(damage.date).toLocaleDateString() : ''
+                    ]);
+                });
+            }
+        });
+        if (!hasBuildingDamage) {
+            reportData.push(['No building damage records reported.', '', '', '', '']);
+        }
+        reportData.push([]);
+
+        // ===== EQUIPMENT DAMAGE DETAILS TABLE =====
+        reportData.push(['EQUIPMENT DAMAGE DETAILS']);
+        reportData.push(['PROVINCE', 'EQUIPMENT NAME', 'DESCRIPTION', 'COST', 'STATUS', 'DATE']);
+        let hasEquipmentDamage = false;
+        Object.entries(officesData).forEach(([office, data]) => {
+            if (data.equipment_details && data.equipment_details.length > 0) {
+                hasEquipmentDamage = true;
+                data.equipment_details.forEach(equip => {
+                    reportData.push([
+                        office,
+                        equip.name || '',
+                        equip.description || '',
+                        equip.cost ? `₱${equip.cost}` : '',
+                        equip.status || 'Reported',
+                        equip.date ? new Date(equip.date).toLocaleDateString() : ''
+                    ]);
+                });
+            }
+        });
+        if (!hasEquipmentDamage) {
+            reportData.push(['No equipment damage records reported.', '', '', '', '', '']);
+        }
+        reportData.push([]);
+
+        // ===== AFFECTED STAFF DETAILS TABLE =====
+        reportData.push(['AFFECTED STAFF DETAILS']);
+        reportData.push(['PROVINCE', 'STAFF NAME', 'AREA', 'ASSISTANCE', 'STATUS']);
+        let hasStaff = false;
+        Object.entries(officesData).forEach(([office, data]) => {
+            if (data.affected_staff && data.affected_staff.length > 0) {
+                hasStaff = true;
+                data.affected_staff.forEach(staff => {
+                    reportData.push([
+                        office,
+                        staff.name || '',
+                        staff.area || '',
+                        staff.assistance || 'None',
+                        staff.status || 'Active'
+                    ]);
+                });
+            }
+        });
+        if (!hasStaff) {
+            reportData.push(['No affected staff records reported.', '', '', '', '']);
+        }
+        reportData.push([]);
+
+        // Narrative Summary
+        reportData.push(['NARRATIVE SUMMARY']);
+        const narrative = Object.values(officesData).map(office => office.remark).filter(Boolean).join(' ') || 'No additional remarks.';
+        reportData.push([narrative]);
+        reportData.push([]);
+
+        // Prepared by Section
+        reportData.push(['Prepared by:']);
+        reportData.push(['DOST 1 DRRM OFFICERS']);
+        reportData.push(['Regional/Provincial Focal']);
+        reportData.push(['']);
+        reportData.push(['EDRUSSELL S. CASTILLO']);
+        reportData.push(['Project Technical Assistant I']);
+        reportData.push(['DRRM Unit Staff']);
+        reportData.push(['']);
+        reportData.push(['MICHAEL JOHN C. MAQUILING']);
+        reportData.push(['Supervising Science Research Specialist']);
+        reportData.push(['DRRMU Regional Focal']);
+        reportData.push([]);
+        reportData.push(['Noted by:']);
+        reportData.push([]);
+        reportData.push(['DR. TERESITA A. TABAOG']);
+        reportData.push(['Regional Director']);
+
+        // Create worksheet
+        const ws = XLSX.utils.aoa_to_sheet(reportData);
+
+        // ===== Apply column widths =====
+        const colWidths = [];
+        const maxCols = reportData.reduce((max, row) => Math.max(max, row.length), 0);
+
+        for (let col = 0; col < maxCols; col++) {
+            let maxWidth = 15;
+            for (let row = 0; row < reportData.length; row++) {
+                const cell = reportData[row]?.[col];
+                if (cell !== undefined && cell !== null) {
+                    const cellStr = String(cell);
+                    const width = Math.ceil(cellStr.length * 1.2);
+                    if (width > maxWidth) {
+                        maxWidth = Math.min(width, 60);
+                    }
+                }
+            }
+            colWidths.push({ wch: maxWidth });
+        }
+        ws['!cols'] = colWidths;
+
+        // ===== Apply table formatting with borders =====
+        const range = XLSX.utils.decode_range(ws['!ref']);
+
+        // Find header rows dynamically
+        let headerRows = [];
+        for (let r = range.s.r; r <= range.e.r; r++) {
+            const cell = ws[XLSX.utils.encode_cell({ r, c: 0 })];
+            if (cell && cell.v) {
+                const val = String(cell.v);
+                if (val.includes('PROVINCE') || val.includes('OFFICE') || val.includes('REMARKS') ||
+                    val.includes('INCIDENTS') || val.includes('CASUALTIES') || val.includes('POWER') ||
+                    val.includes('COMMUNICATION') || val.includes('DAMAGE') || val.includes('SUSPENSION') ||
+                    val.includes('ASSISTANCE') || val.includes('DESCRIPTION') || val.includes('COST') ||
+                    val.includes('STATUS') || val.includes('DATE') || val.includes('EQUIPMENT') ||
+                    val.includes('STAFF')) {
+                    headerRows.push(r);
+                }
+            }
+        }
+
+        // Apply formatting to all cells
+        for (let r = range.s.r; r <= range.e.r; r++) {
+            for (let c = range.s.c; c <= range.e.c; c++) {
+                const address = XLSX.utils.encode_cell({ r, c });
+                if (!ws[address]) continue;
+
+                const cellValue = ws[address].v;
+                const isTitle = r === 0;
+                const isSectionHeader = typeof cellValue === 'string' &&
+                    (cellValue.includes('I.') || cellValue.includes('II.') ||
+                        cellValue.includes('A.') || cellValue.includes('B.') ||
+                        cellValue.includes('C.') || cellValue.includes('D.') ||
+                        cellValue.includes('E.') || cellValue.includes('F.') ||
+                        cellValue.includes('G.') || cellValue.includes('DAMAGE BUILDING') ||
+                        cellValue.includes('EQUIPMENT DAMAGE') || cellValue.includes('AFFECTED STAFF') ||
+                        cellValue.includes('NARRATIVE SUMMARY'));
+
+                const isTableHeader = headerRows.includes(r) && c < 7;
+                const isPreparedBy = typeof cellValue === 'string' &&
+                    (cellValue.includes('Prepared by:') || cellValue.includes('Noted by:') ||
+                        cellValue.includes('DOST 1 DRRM') || cellValue.includes('Regional/Provincial') ||
+                        cellValue.includes('EDRUSSELL') || cellValue.includes('MICHAEL') ||
+                        cellValue.includes('DR. TERESITA'));
+
+                // Determine if cell is in a table body
+                let isTableBody = false;
+                for (let i = 0; i < headerRows.length; i++) {
+                    const headerRow = headerRows[i];
+                    const nextHeaderRow = headerRows[i + 1] || range.e.r + 1;
+                    if (r > headerRow && r < nextHeaderRow && c < 7) {
+                        isTableBody = true;
+                        break;
+                    }
+                }
+
+                // Build cell style
+                let style = {
+                    font: {
+                        bold: isTitle || isSectionHeader || isTableHeader || isPreparedBy,
+                        sz: isTitle ? 16 : (isSectionHeader || isTableHeader ? 12 : 10)
+                    },
+                    alignment: {
+                        wrapText: true,
+                        vertical: 'center',
+                        horizontal: isTableHeader ? 'center' : 'left'
+                    },
+                    border: {}
+                };
+
+                // Add borders for table cells
+                if (isTableHeader || isTableBody) {
+                    style.border = {
+                        top: { style: 'thin', color: { rgb: "000000" } },
+                        bottom: { style: 'thin', color: { rgb: "000000" } },
+                        left: { style: 'thin', color: { rgb: "000000" } },
+                        right: { style: 'thin', color: { rgb: "000000" } }
+                    };
+
+                    // Background color for headers
+                    if (isTableHeader) {
+                        style.fill = { fgColor: { rgb: "1a56db" } };
+                        style.font.color = { rgb: "FFFFFF" };
+                        style.font.bold = true;
+                    }
+
+                    // Alternate row colors for data
+                    if (isTableBody && r % 2 === 0) {
+                        style.fill = { fgColor: { rgb: "f3f4f6" } };
+                    }
+                }
+
+                // Special formatting for Prepared by section
+                if (isPreparedBy) {
+                    style.font.bold = true;
+                    style.font.sz = 11;
+                }
+
+                ws[address] = {
+                    ...ws[address],
+                    s: style
+                };
+            }
+        }
+
+        // ===== Merge cells for title =====
+        ws['!merges'] = [
+            { s: { r: 0, c: 0 }, e: { r: 0, c: maxCols - 1 } }, // Main title
+        ];
+
+        // Append sheet
+        XLSX.utils.book_append_sheet(wb, ws, 'SITREP');
+
+        // ===== SHEET 2: Raw Data with Table Formatting =====
+        const rawData = [];
         const headers = [
             'PSTO Office',
             'Warning Signals',
@@ -1759,35 +1922,18 @@ const Dashboard = ({ onLogout, currentUser }) => {
             'Assistance',
             'Assistance Remarks',
             'Overall Remarks',
-            'Damage Building',
-            'Affected Staff'
+            'Building Damage Count',
+            'Equipment Damage Count',
+            'Affected Staff Count'
         ];
+        rawData.push(headers);
 
-        sheetData.push(headers);
-
-        // Data rows
         Object.entries(officesData).forEach(([office, data]) => {
             const signals = Object.entries(data.warning_signals || {})
                 .map(([mun, sig]) => `${mun}: ${sig}`)
                 .join('; ') || 'None';
 
-            const buildingDamages = (data.damage_details || [])
-                .map(d => `${d.description || ''}${d.cost ? ` (₱${d.cost})` : ''}`)
-                .join('; ');
-
-            const equipmentDamages = (data.equipment_details || [])
-                .map(e => `${e.name || ''}${e.description ? ` - ${e.description}` : ''}${e.cost ? ` (₱${e.cost})` : ''}`)
-                .join('; ');
-
-            const damages = [buildingDamages, equipmentDamages]
-                .filter(Boolean)
-                .join(' | ') || 'None';
-
-            const staff = (data.affected_staff || [])
-                .map(s => `${s.name || ''}${s.area ? ` - ${s.area}` : ''}`)
-                .join('; ') || 'None';
-
-            sheetData.push([
+            rawData.push([
                 office,
                 signals,
                 data.general_weather || '',
@@ -1806,61 +1952,47 @@ const Dashboard = ({ onLogout, currentUser }) => {
                 data.assistance_provided || '',
                 data.remark_assistance_provided || '',
                 data.remark || '',
-                damages || '',
-                staff || ''
+                (data.damage_details || []).length,
+                (data.equipment_details || []).length,
+                (data.affected_staff || []).length
             ]);
         });
 
-        // Create workbook
-        const wb = XLSX.utils.book_new();
-        const ws = XLSX.utils.aoa_to_sheet(sheetData);
+        const wsRaw = XLSX.utils.aoa_to_sheet(rawData);
 
-        // ===== FIX: Auto-fit column widths =====
-        const colWidths = [];
-        const maxCols = sheetData.reduce((max, row) => Math.max(max, row.length), 0);
-
-        for (let col = 0; col < maxCols; col++) {
-            let maxWidth = 20; // Minimum width
-            for (let row = 0; row < sheetData.length; row++) {
-                const cell = sheetData[row]?.[col];
+        // Auto-fit columns for raw data
+        const rawColWidths = [];
+        for (let col = 0; col < rawData[0].length; col++) {
+            let maxWidth = 15;
+            for (let row = 0; row < rawData.length; row++) {
+                const cell = rawData[row]?.[col];
                 if (cell !== undefined && cell !== null) {
                     const cellStr = String(cell);
-                    // Calculate approximate width (characters * 1.2 for padding)
                     const width = Math.ceil(cellStr.length * 1.2);
                     if (width > maxWidth) {
-                        maxWidth = Math.min(width, 50); // Cap at 50 for readability
+                        maxWidth = Math.min(width, 40);
                     }
                 }
             }
-            colWidths.push({ wch: maxWidth });
+            rawColWidths.push({ wch: maxWidth });
         }
-        ws['!cols'] = colWidths;
+        wsRaw['!cols'] = rawColWidths;
 
-        // ===== FIX: Header row formatting =====
-        // Add range for header row
-        const range = XLSX.utils.decode_range(ws['!ref']);
+        // Format raw data table with borders
+        const rawRange = XLSX.utils.decode_range(wsRaw['!ref']);
+        for (let r = rawRange.s.r; r <= rawRange.e.r; r++) {
+            for (let c = rawRange.s.c; c <= rawRange.e.c; c++) {
+                const address = XLSX.utils.encode_cell({ r, c });
+                if (!wsRaw[address]) continue;
 
-        // Apply header formatting
-        for (let col = range.s.c; col <= range.e.c; col++) {
-            const address = XLSX.utils.encode_cell({ r: 0, c: col });
-            if (!ws[address]) continue;
+                const isHeader = r === 0;
 
-            // Create cell with formatting
-            ws[address] = {
-                ...ws[address],
-                s: {
-                    font: {
-                        bold: true,
-                        sz: 12,
-                        color: { rgb: "FFFFFF" }
-                    },
-                    fill: {
-                        fgColor: { rgb: "1a56db" } // Blue background
-                    },
+                let style = {
+                    font: { bold: isHeader, sz: isHeader ? 11 : 10 },
                     alignment: {
-                        horizontal: 'center',
+                        wrapText: true,
                         vertical: 'center',
-                        wrapText: true
+                        horizontal: isHeader ? 'center' : 'left'
                     },
                     border: {
                         top: { style: 'thin', color: { rgb: "000000" } },
@@ -1868,47 +2000,38 @@ const Dashboard = ({ onLogout, currentUser }) => {
                         left: { style: 'thin', color: { rgb: "000000" } },
                         right: { style: 'thin', color: { rgb: "000000" } }
                     }
+                };
+
+                if (isHeader) {
+                    style.fill = { fgColor: { rgb: "1a56db" } };
+                    style.font.color = { rgb: "FFFFFF" };
+                    style.font.bold = true;
+                } else if (r % 2 === 0) {
+                    style.fill = { fgColor: { rgb: "f3f4f6" } };
                 }
-            };
-        }
 
-        // Apply wrap text for all cells
-        for (let r = range.s.r; r <= range.e.r; r++) {
-            for (let c = range.s.c; c <= range.e.c; c++) {
-                const address = XLSX.utils.encode_cell({ r, c });
-                if (!ws[address]) continue;
-                if (r === 0) continue; // Skip header (already formatted)
-
-                ws[address] = {
-                    ...ws[address],
-                    s: {
-                        ...ws[address].s,
-                        alignment: {
-                            wrapText: true,
-                            vertical: 'center'
-                        }
-                    }
+                wsRaw[address] = {
+                    ...wsRaw[address],
+                    s: style
                 };
             }
         }
 
-        // Append sheet to workbook
-        XLSX.utils.book_append_sheet(wb, ws, 'PSTO_Report');
+        XLSX.utils.book_append_sheet(wb, wsRaw, 'Raw Data');
 
         // Generate file
-        XLSX.writeFile(wb, `DOST1_Report_${new Date().toISOString().slice(0, 19)}.xlsx`);
-        showToast('Excel report exported successfully.', 'success');
-        addNotification('Excel Exported', 'Report exported to Excel with proper formatting.', 'success');
+        XLSX.writeFile(wb, `SITREP_${activeEvent?.name || 'NO_EVENT'}_${new Date().toISOString().slice(0, 19)}.xlsx`);
+        showToast('Situational Report exported successfully.', 'success');
+        addNotification('Excel Exported', 'Complete SITREP exported with table formatting.', 'success');
     };
 
-    // ===== FIXED: Reject Event Handler =====
+    // ===== Reject Event Handler =====
     const handleRejectEvent = (eventId, reason) => {
         if (!reason || !reason.trim()) {
             showToast('Please provide a rejection reason.', 'warning');
             return;
         }
 
-        // Update events state
         const updatedEvents = events.map(event => {
             if (event.id === eventId) {
                 return {
@@ -1923,7 +2046,6 @@ const Dashboard = ({ onLogout, currentUser }) => {
 
         setEvents(updatedEvents);
 
-        // Update selected event if it's the same
         if (selectedEvent?.id === eventId) {
             setSelectedEvent({
                 ...selectedEvent,
@@ -1933,10 +2055,8 @@ const Dashboard = ({ onLogout, currentUser }) => {
             });
         }
 
-        // Close details modal
         setShowDetailsModal(false);
 
-        // Add notification
         const eventName = events.find(e => e.id === eventId)?.name;
         addNotification(
             'Event Rejected',
@@ -1945,18 +2065,15 @@ const Dashboard = ({ onLogout, currentUser }) => {
         );
         showToast(`Event "${eventName}" rejected.`, 'error');
 
-        // Sync to localStorage (API call simulation)
         try {
             saveToStorage('dash_events', updatedEvents);
-            // In a real app, you would make an API call here:
-            // await fetch('/api/events/reject', { method: 'POST', body: JSON.stringify({ eventId, reason }) });
         } catch (error) {
             console.error('Failed to sync rejection:', error);
             showToast('Failed to sync rejection to database.', 'error');
         }
     };
 
-    // ===== FIXED: Reject Report Handler =====
+    // ===== Reject Report Handler =====
     const handleRejectReport = (reportId, reason) => {
         if (!reason || !reason.trim()) {
             showToast('Please provide a rejection reason.', 'warning');
@@ -1977,7 +2094,6 @@ const Dashboard = ({ onLogout, currentUser }) => {
         );
         showToast('Report rejected.', 'error');
 
-        // Sync to localStorage
         try {
             const updatedReports = pendingReports.map(r =>
                 r.id === reportId
@@ -3095,7 +3211,6 @@ const Dashboard = ({ onLogout, currentUser }) => {
         { label: 'Assistance Provided', value: currentOfficeData.assistance_provided || 'Not specified', remark: currentOfficeData.remark_assistance_provided || '' }
     ];
 
-    // ===== Office Click Handler =====
     const handleOfficeClick = (officeName) => {
         setSelectedOffice(officeName);
         setEditMode(false);
@@ -3267,7 +3382,6 @@ const Dashboard = ({ onLogout, currentUser }) => {
                     <div className="warning-card-body">
                         {editMode ? (
                             <div className="improved-edit-form">
-                                {/* Warning Signals Section */}
                                 <div className="edit-section">
                                     <div className="edit-section-header" onClick={() => toggleSection('warningSignals')}><h4>📡 Warning Signals</h4><span>{expandedSections.warningSignals ? '▼' : '►'}</span></div>
                                     {expandedSections.warningSignals && (
@@ -3294,7 +3408,6 @@ const Dashboard = ({ onLogout, currentUser }) => {
                                     )}
                                 </div>
 
-                                {/* General Weather */}
                                 <div className="edit-section">
                                     <div className="edit-section-header" onClick={() => toggleSection('generalWeather')}><h4>🌤️ General Weather</h4><span>{expandedSections.generalWeather ? '▼' : '►'}</span></div>
                                     {expandedSections.generalWeather && (
@@ -3307,7 +3420,6 @@ const Dashboard = ({ onLogout, currentUser }) => {
                                     )}
                                 </div>
 
-                                {/* Effects */}
                                 <div className="edit-section">
                                     <div className="edit-section-header" onClick={() => toggleSection('effects')}><h4>📊 Effects</h4><span>{expandedSections.effects ? '▼' : '►'}</span></div>
                                     {expandedSections.effects && (
@@ -3323,7 +3435,6 @@ const Dashboard = ({ onLogout, currentUser }) => {
                                     )}
                                 </div>
 
-                                {/* Damage Building */}
                                 <div className="edit-section">
                                     <div className="edit-section-header" onClick={() => toggleSection('damageDetails')}>
                                         <h4>🏗️ Damage Building</h4>
@@ -3389,7 +3500,6 @@ const Dashboard = ({ onLogout, currentUser }) => {
                                     )}
                                 </div>
 
-                                {/* Equipment */}
                                 <div className="edit-section">
                                     <div className="edit-section-header" onClick={() => toggleSection('equipmentDetails')}>
                                         <h4>🛠️ Damage Equipment</h4>
@@ -3459,7 +3569,6 @@ const Dashboard = ({ onLogout, currentUser }) => {
                                     )}
                                 </div>
 
-                                {/* Affected Staff */}
                                 <div className="edit-section">
                                     <div className="edit-section-header" onClick={() => toggleSection('affectedStaff')}>
                                         <h4>👥 Affected Staff</h4>
@@ -3510,7 +3619,6 @@ const Dashboard = ({ onLogout, currentUser }) => {
                                     )}
                                 </div>
 
-                                {/* Office Image */}
                                 <div className="edit-section">
                                     <div className="edit-section-header" onClick={() => toggleSection('officeImage')}>
                                         <h4>🖼️ Office Image</h4>
@@ -3532,7 +3640,6 @@ const Dashboard = ({ onLogout, currentUser }) => {
                                     )}
                                 </div>
 
-                                {/* Remarks */}
                                 <div className="edit-section">
                                     <div className="edit-section-header" onClick={() => toggleSection('remarks')}><h4>📝 General Remarks</h4><span>{expandedSections.remarks ? '▼' : '►'}</span></div>
                                     {expandedSections.remarks && (
@@ -3690,25 +3797,58 @@ const Dashboard = ({ onLogout, currentUser }) => {
     return (
         <div className={`dashboard-container ${settingsData.darkMode ? 'dark-mode' : ''}`}>
             <div className="sidebar-new">
-                <div className="sidebar-logo"><h2>DOST Region 1</h2><p>Disaster Management</p></div>
+                <div className="sidebar-logo">
+                    <h2>DOST Region 1</h2>
+                    <p>Disaster Management</p>
+                </div>
                 <nav className="sidebar-nav">
-                    <div className={`nav-item ${activeMenu === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveMenu('dashboard')}><span className="nav-icon">📊</span><span>Dashboard</span></div>
-                    <div className={`nav-item ${activeMenu === 'typhoon' ? 'active' : ''}`} onClick={() => setActiveMenu('typhoon')}><span className="nav-icon">🌊</span><span>Typhoon</span></div>
-                    <div className={`nav-item ${activeMenu === 'history' ? 'active' : ''}`} onClick={() => setActiveMenu('history')}><span className="nav-icon">📜</span><span>History</span></div>
-                    <div className={`nav-item ${activeMenu === 'live-typhoon' ? 'active' : ''}`} onClick={() => setActiveMenu('live-typhoon')}><span className="nav-icon">🗺️</span><span>Live Typhoon (Panahon)</span></div>
-                    <div className={`nav-item ${activeMenu === 'notifications' ? 'active' : ''}`} onClick={() => setActiveMenu('notifications')}><span className="nav-icon">🔔</span><span>Notifications {unreadCount > 0 && `(${unreadCount})`}</span></div>
-                    {canApproveReports && <div className={`nav-item ${activeMenu === 'pending-reports' ? 'active' : ''}`} onClick={() => setActiveMenu('pending-reports')}><span className="nav-icon">📋</span><span>Pending Reports</span></div>}
-                    {canManageUsers && <div className={`nav-item ${activeMenu === 'users' ? 'active' : ''}`} onClick={() => setActiveMenu('users')}><span className="nav-icon">👥</span><span>Users</span></div>}
+                    <div className={`nav-item ${activeMenu === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveMenu('dashboard')}>
+                        <span className="nav-icon">📊</span>
+                        <span>Dashboard</span>
+                    </div>
+                    <div className={`nav-item ${activeMenu === 'typhoon' ? 'active' : ''}`} onClick={() => setActiveMenu('typhoon')}>
+                        <span className="nav-icon">🌊</span>
+                        <span>Typhoon</span>
+                    </div>
+                    <div className={`nav-item ${activeMenu === 'history' ? 'active' : ''}`} onClick={() => setActiveMenu('history')}>
+                        <span className="nav-icon">📜</span>
+                        <span>History</span>
+                    </div>
+                    <div className={`nav-item ${activeMenu === 'live-typhoon' ? 'active' : ''}`} onClick={() => setActiveMenu('live-typhoon')}>
+                        <span className="nav-icon">🗺️</span>
+                        <span>Live Typhoon (Panahon)</span>
+                    </div>
+                    <div className={`nav-item ${activeMenu === 'notifications' ? 'active' : ''}`} onClick={() => setActiveMenu('notifications')}>
+                        <span className="nav-icon">🔔</span>
+                        <span>Notifications {unreadCount > 0 && `(${unreadCount})`}</span>
+                    </div>
+                    {canApproveReports && (
+                        <div className={`nav-item ${activeMenu === 'pending-reports' ? 'active' : ''}`} onClick={() => setActiveMenu('pending-reports')}>
+                            <span className="nav-icon">📋</span>
+                            <span>Pending Reports</span>
+                        </div>
+                    )}
+                    {canManageUsers && (
+                        <div className={`nav-item ${activeMenu === 'users' ? 'active' : ''}`} onClick={() => setActiveMenu('users')}>
+                            <span className="nav-icon">👥</span>
+                            <span>Users</span>
+                        </div>
+                    )}
                 </nav>
                 <div className="sidebar-footer">
-                    <div className="user-info"><div className="user-greeting">Hello, {currentUser?.name || 'Admin'}</div><div className="user-role">{isSuperAdmin ? 'SUPER ADMIN' : (isAdmin ? 'ADMIN' : 'USER')}</div></div>
+                    <div className="user-info">
+                        <div className="user-greeting">Hello, {currentUser?.name || 'Admin'}</div>
+                        <div className="user-role">{isSuperAdmin ? 'SUPER ADMIN' : (isAdmin ? 'ADMIN' : 'USER')}</div>
+                    </div>
                     <div className="sidebar-settings">
                         <div className="settings-item" onClick={() => setShowSettingsModal(true)}>
                             <span className="settings-icon">⚙️</span>
                             <span>Settings</span>
                         </div>
                     </div>
-                    <div className="user-actions"><div className="action-item logout" onClick={onLogout}>🚪 Logout</div></div>
+                    <div className="user-actions">
+                        <div className="action-item logout" onClick={onLogout}>🚪 Logout</div>
+                    </div>
                 </div>
             </div>
             <div className="main-content" ref={mainContentRef} onScroll={handleScroll}>
@@ -3914,7 +4054,6 @@ const Dashboard = ({ onLogout, currentUser }) => {
                 )}
             </div>
 
-            {/* Modals */}
             <EventDetailsModal
                 isOpen={showDetailsModal}
                 onClose={handleCloseDetailsModal}
