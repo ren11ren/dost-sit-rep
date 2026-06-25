@@ -224,9 +224,965 @@ const fetchLiveWeather = async () => {
     return null;
 };
 
-// ===== FIXED: Deep clone function =====
+// Deep clone function
 const deepClone = (obj) => JSON.parse(JSON.stringify(obj));
 
+// ======================== REJECT MODAL COMPONENT ========================
+const RejectModal = ({ isOpen, onClose, onConfirm, title, itemName }) => {
+    const [reason, setReason] = useState('');
+
+    useEffect(() => {
+        const handleEsc = (e) => {
+            if (e.key === 'Escape' && isOpen) {
+                onClose();
+            }
+        };
+        window.addEventListener('keydown', handleEsc);
+        return () => window.removeEventListener('keydown', handleEsc);
+    }, [isOpen, onClose]);
+
+    useEffect(() => {
+        if (isOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'unset';
+            setReason('');
+        }
+        return () => {
+            document.body.style.overflow = 'unset';
+        };
+    }, [isOpen]);
+
+    if (!isOpen) return null;
+
+    const handleOverlayClick = (e) => {
+        if (e.target === e.currentTarget) {
+            onClose();
+        }
+    };
+
+    const handleConfirm = () => {
+        if (!reason.trim()) {
+            alert('Please provide a rejection reason.');
+            return;
+        }
+        onConfirm(reason);
+        setReason('');
+        onClose();
+    };
+
+    return (
+        <div className="modal-overlay" onClick={handleOverlayClick}>
+            <div className="modal-content reject-modal" onClick={e => e.stopPropagation()}>
+                <div className="modal-header">
+                    <h3>{title || 'Reject Item'}</h3>
+                    <button className="modal-close" onClick={onClose}>×</button>
+                </div>
+                <div className="modal-body">
+                    <p><strong>Item:</strong> {itemName || 'Unnamed item'}</p>
+                    <p>Please provide a reason for rejecting this item:</p>
+                    <textarea
+                        className="reject-reason-textarea"
+                        value={reason}
+                        onChange={(e) => setReason(e.target.value)}
+                        placeholder="Enter rejection reason..."
+                        rows="4"
+                    />
+                </div>
+                <div className="modal-buttons">
+                    <button className="danger" onClick={handleConfirm}>Confirm Rejection</button>
+                    <button className="modal-close-footer-btn" onClick={onClose}>Cancel</button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// ======================== EXTRACTED COMPONENTS ========================
+
+// Toast component
+const ToastBanner = ({ toast, setToast }) => {
+    if (!toast.visible) return null;
+    return (
+        <div className={`toast-banner toast-${toast.type}`}>
+            <span>{toast.message}</span>
+            <button className="toast-close" onClick={() => setToast(prev => ({ ...prev, visible: false }))}>×</button>
+        </div>
+    );
+};
+
+// Notification Widget component
+const NotificationWidget = ({ unreadCount, showNotificationsDropdown, setShowNotificationsDropdown, notifications, clearAllNotifications, markNotificationRead }) => (
+    <div className="notification-widget">
+        <button type="button" className="notification-button" onClick={() => setShowNotificationsDropdown(prev => !prev)}>
+            🔔
+            {unreadCount > 0 && <span className="notification-badge">{unreadCount}</span>}
+        </button>
+        {showNotificationsDropdown && (
+            <div className="notification-dropdown">
+                <div className="notification-dropdown-header">
+                    <span>Notifications</span>
+                    <button type="button" onClick={() => { clearAllNotifications(); setShowNotificationsDropdown(false); }}>Clear All</button>
+                </div>
+                {notifications.length === 0 ? (
+                    <div className="notification-empty">No notifications</div>
+                ) : (
+                    notifications.slice(0, 6).map(notif => (
+                        <div key={notif.id} className={`notification-item ${notif.read ? 'read' : 'unread'}`}>
+                            <div className="notification-title">{notif.title}</div>
+                            <div className="notification-message">{notif.message}</div>
+                            <div className="notification-time">{new Date(notif.timestamp).toLocaleString()}</div>
+                            {!notif.read && <button type="button" onClick={() => markNotificationRead(notif.id)}>Mark read</button>}
+                        </div>
+                    ))
+                )}
+            </div>
+        )}
+    </div>
+);
+
+// Top Info Bar component
+const TopInfoBar = ({ activeEvent, displayWeather }) => (
+    <div className="top-info-bar">
+        <div className="top-info-item top-info-main">
+            <span className="top-info-label">Current Event</span>
+            <span className="top-info-value">{activeEvent ? activeEvent.name : 'No Active Typhoon'}</span>
+        </div>
+        <div className="top-info-item">
+            <span className="top-info-label">Category</span>
+            <span className="top-info-value">{activeEvent?.category || '—'}</span>
+        </div>
+        <div className="top-info-item">
+            <span className="top-info-label">Alert Level</span>
+            <span className="top-info-value">{activeEvent?.alertLevel || '—'}</span>
+        </div>
+        <div className="top-info-item">
+            <span className="top-info-label">Live Weather</span>
+            <span className="top-info-value">{displayWeather}</span>
+        </div>
+    </div>
+);
+
+// Info Bar component
+const InfoBar = ({ displayWeather, activeEvent, typhoonHistory }) => (
+    <div className="info-bar">
+        <div className="info-item"><span className="info-value">Region 1</span></div>
+        <div className="info-item"><span className="info-label">Current Weather:</span><span className="info-value">{displayWeather}</span></div>
+        <div className="info-item"><span className="info-label">Active Event:</span><span className="info-value">{activeEvent ? activeEvent.name : 'None'}</span></div>
+        <div className="info-item"><span className="info-label">Total Events:</span><span className="info-value">{typhoonHistory.length}</span></div>
+    </div>
+);
+
+// Notification Banner component
+const NotificationBanner = ({ activeEvent, handleGenerateReport, handleDownloadDoc, handleExportExcel }) => (
+    <div className="notification-banner">
+        <span className="notification-badge">SYSTEM NOTICE</span>
+        <span>{activeEvent ? `Active tropical cyclone ${activeEvent.name} (${activeEvent.alertLevel}) is being monitored.` : 'No active tropical cyclone at the moment. Systems are stable.'}</span>
+        <div style={{ display: 'flex', gap: '10px', marginLeft: '16px', flexWrap: 'wrap' }}>
+            <button className="secondary-btn" onClick={handleGenerateReport}>📄 Generate Report</button>
+            <button className="secondary-btn" onClick={handleDownloadDoc}>📥 Download DOC</button>
+            <button className="secondary-btn" onClick={handleExportExcel}>📊 Export Excel</button>
+        </div>
+    </div>
+);
+
+// PSTO Selector component
+const PSTOSelector = ({ isUser, currentUser, officesData, selectedOffice, regionSummary, handleOfficeClick }) => (
+    <div className="psto-selector-section">
+        <div className="psto-section-header"><h2>{isUser && currentUser?.office ? '🏢 Your PSTO Office' : '🏢 Select PSTO Office'}</h2></div>
+        <div className="psto-selector-grid">
+            {isUser && currentUser?.office ? (
+                <div
+                    className={`psto-selector-card active ${officesData[currentUser.office]?.imageUrl ? 'has-image' : ''}`}
+                    data-office={currentUser.office}
+                    style={officesData[currentUser.office]?.imageUrl ? { backgroundImage: `url(${officesData[currentUser.office].imageUrl})` } : {}}
+                    onClick={() => handleOfficeClick(currentUser.office)}
+                >
+                    <div className="psto-selector-overlay">
+                        <div className="psto-selector-name">{currentUser.office}</div>
+                        <div className="psto-selector-stats">
+                            <span>📊 {officesData[currentUser.office]?.related_incidents ?? 0}</span>
+                            <span>⚠️ {officesData[currentUser.office]?.casualties ?? 0}</span>
+                            <span>🏗️ {(officesData[currentUser.office]?.damage_details || []).length}</span>
+                            <span>👥 {(officesData[currentUser.office]?.affected_staff || []).length}</span>
+                        </div>
+                    </div>
+                </div>
+            ) : (
+                <>
+                    <div
+                        className={`psto-selector-card ${selectedOffice === 'PSTO-Region-1' ? 'active' : ''}`}
+                        data-office="PSTO-Region-1"
+                        onClick={() => handleOfficeClick('PSTO-Region-1')}
+                    >
+                        <div className="psto-selector-overlay">
+                            <div className="psto-selector-name">PSTO Region 1</div>
+                            <div className="psto-selector-stats">
+                                <span>📊 {regionSummary.incidents}</span>
+                                <span>⚠️ {regionSummary.casualties}</span>
+                                <span>🏗️ {regionSummary.damageDetails}</span>
+                                <span>👥 {regionSummary.affectedStaff}</span>
+                            </div>
+                        </div>
+                    </div>
+                    {Object.keys(officesData).map(office => (
+                        <div
+                            key={office}
+                            className={`psto-selector-card ${selectedOffice === office ? 'active' : ''} ${officesData[office]?.imageUrl ? 'has-image' : ''}`}
+                            data-office={office}
+                            style={officesData[office]?.imageUrl ? { backgroundImage: `url(${officesData[office].imageUrl})` } : {}}
+                            onClick={() => handleOfficeClick(office)}
+                        >
+                            <div className="psto-selector-overlay">
+                                <div className="psto-selector-name">{office}</div>
+                                <div className="psto-selector-stats">
+                                    <span>📊 {officesData[office].related_incidents}</span>
+                                    <span>⚠️ {officesData[office].casualties}</span>
+                                    <span>🏗️ {(officesData[office].damage_details || []).length}</span>
+                                    <span>👥 {(officesData[office].affected_staff || []).length}</span>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </>
+            )}
+        </div>
+    </div>
+);
+
+// Edit Controls Bar component
+const EditControlsBar = ({ selectedOffice, isUser, editMode, handleEditToggle, openReportModal, handleSave }) => (
+    <div className="edit-controls-bar">
+        <div><strong>Current PSTO:</strong> {selectedOffice}</div>
+        <div className="edit-buttons">
+            {!isUser && selectedOffice !== 'PSTO-Region-1' && <button onClick={handleEditToggle}>{editMode ? 'Cancel' : '✏️ Edit PSTO Data'}</button>}
+            {isUser && <button className="success" onClick={openReportModal}>📤 Submit Report</button>}
+            {editMode && <button className="success" onClick={handleSave}>💾 Save Changes</button>}
+        </div>
+    </div>
+);
+
+// Office Modal component
+const OfficeModal = ({
+    isOpen,
+    onClose,
+    selectedOffice,
+    displayWeather,
+    currentOfficeData,
+    officeStatusRemarks
+}) => {
+    useEffect(() => {
+        const handleEsc = (e) => {
+            if (e.key === 'Escape' && isOpen) {
+                onClose();
+            }
+        };
+        window.addEventListener('keydown', handleEsc);
+        return () => window.removeEventListener('keydown', handleEsc);
+    }, [isOpen, onClose]);
+
+    useEffect(() => {
+        if (isOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'unset';
+        }
+        return () => {
+            document.body.style.overflow = 'unset';
+        };
+    }, [isOpen]);
+
+    if (!isOpen || !selectedOffice) return null;
+
+    const handleOverlayClick = (e) => {
+        if (e.target === e.currentTarget) {
+            onClose();
+        }
+    };
+
+    return (
+        <div className="modal-overlay" onClick={handleOverlayClick}>
+            <div className="modal-content event-details-modal" onClick={(e) => e.stopPropagation()}>
+                <div className="details-header">
+                    <div className="details-title">{selectedOffice} Summary</div>
+                    <button className="modal-close" onClick={onClose}>×</button>
+                </div>
+
+                <div className="detail-section">
+                    <div className="detail-section-title">Office Overview</div>
+                    <div className="summary-panel">
+                        <p><strong>General Weather:</strong> {displayWeather}</p>
+                    </div>
+                </div>
+
+                <div className="detail-section">
+                    <div className="detail-section-title">Quick Summary</div>
+                    <div className="summary-grid">
+                        <div className="summary-card">
+                            <span className="summary-card-label">Damage Building</span>
+                            <span className="summary-card-value">{Array.isArray(currentOfficeData.damage_details) ? currentOfficeData.damage_details.length : '0'} record(s)</span>
+                        </div>
+                        <div className="summary-card">
+                            <span className="summary-card-label">Equipment Damage</span>
+                            <span className="summary-card-value">{Array.isArray(currentOfficeData.equipment_details) ? currentOfficeData.equipment_details.length : '0'} record(s)</span>
+                        </div>
+                        <div className="summary-card">
+                            <span className="summary-card-label">Affected Staff</span>
+                            <span className="summary-card-value">{Array.isArray(currentOfficeData.affected_staff) ? currentOfficeData.affected_staff.length : '0'} record(s)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="detail-section">
+                    <div className="detail-section-title">Damage Building</div>
+                    <div className="summary-panel">
+                        {Array.isArray(currentOfficeData.damage_details) && currentOfficeData.damage_details.length > 0 ? (
+                            <div className="summary-list">
+                                {currentOfficeData.damage_details.map((damage, idx) => (
+                                    <div key={damage.id || idx} className="summary-list-item">
+                                        <span className="summary-list-title">{damage.description || 'No description'}</span>
+                                        <span>Cost: ₱{damage.cost || 0}</span>
+                                        <span>Status: {damage.status || 'Reported'}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <p>No damage records reported.</p>
+                        )}
+                    </div>
+                </div>
+
+                <div className="detail-section">
+                    <div className="detail-section-title">Equipment Damage</div>
+                    <div className="summary-panel">
+                        {Array.isArray(currentOfficeData.equipment_details) && currentOfficeData.equipment_details.length > 0 ? (
+                            <div className="summary-list">
+                                {currentOfficeData.equipment_details.map((equip, idx) => (
+                                    <div key={equip.id || idx} className="summary-list-item">
+                                        <span className="summary-list-title">{equip.name || 'No name'}</span>
+                                        <span>{equip.description || ''}</span>
+                                        <span>Cost: ₱{equip.cost || 0}</span>
+                                        <span>Status: {equip.status || 'Reported'}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <p>No equipment damage records reported.</p>
+                        )}
+                    </div>
+                </div>
+
+                <div className="detail-section">
+                    <div className="detail-section-title">Affected Staff</div>
+                    <div className="summary-panel">
+                        {Array.isArray(currentOfficeData.affected_staff) && currentOfficeData.affected_staff.length > 0 ? (
+                            <div className="summary-list">
+                                {currentOfficeData.affected_staff.map((staff, idx) => (
+                                    <div key={staff.id || idx} className="summary-list-item">
+                                        <span className="summary-list-title">{staff.name || 'Unknown staff'}</span>
+                                        <span>Area: {staff.area || 'Not specified'}</span>
+                                        <span>Assistance: {staff.assistance || 'None'}</span>
+                                        <span>Status: {staff.status || 'Active'}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <p>No affected staff reported.</p>
+                        )}
+                    </div>
+                </div>
+
+                <div className="detail-section">
+                    <div className="detail-section-title">Effects Summary</div>
+                    <div className="summary-panel">
+                        <div className="effects-summary-grid">
+                            {officeStatusRemarks.map((item) => (
+                                <div key={item.label} className="effect-summary-item">
+                                    <span className="effect-summary-label">{item.label}:</span>
+                                    <span className="effect-summary-value">{item.value || '—'}</span>
+                                    {item.remark && item.remark.trim() !== '' && (
+                                        <span className="effect-summary-remark">({item.remark})</span>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+
+                {currentOfficeData.municipalities && currentOfficeData.municipalities.length > 0 && (
+                    <div className="detail-section">
+                        <div className="detail-section-title">Municipalities</div>
+                        <div className="scope-tags">
+                            {currentOfficeData.municipalities.map((mun) => (
+                                <span key={mun} className="scope-tag">{mun}</span>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {currentOfficeData.remark && currentOfficeData.remark.trim() !== '' && (
+                    <div className="detail-section">
+                        <div className="detail-section-title">General Remarks</div>
+                        <div className="summary-panel">
+                            <p>{currentOfficeData.remark}</p>
+                        </div>
+                    </div>
+                )}
+
+                <div className="modal-buttons">
+                    <button className="modal-close-footer-btn" onClick={onClose}>Close</button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// ===== ADD/EDIT EVENT MODAL - MODERN DESIGN =====
+const AddEventModal = ({
+    isOpen,
+    onClose,
+    isEditingEvent,
+    newEvent,
+    handleNewEventFieldChange,
+    setNewEvent,
+    handleAddEvent,
+    allProvinces
+}) => {
+    useEffect(() => {
+        const handleEsc = (e) => {
+            if (e.key === 'Escape' && isOpen) {
+                onClose();
+            }
+        };
+        window.addEventListener('keydown', handleEsc);
+        return () => window.removeEventListener('keydown', handleEsc);
+    }, [isOpen, onClose]);
+
+    useEffect(() => {
+        if (isOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'unset';
+        }
+        return () => {
+            document.body.style.overflow = 'unset';
+        };
+    }, [isOpen]);
+
+    if (!isOpen) return null;
+
+    const handleOverlayClick = (e) => {
+        if (e.target === e.currentTarget) {
+            onClose();
+        }
+    };
+
+    return (
+        <div className="modal-overlay" onClick={handleOverlayClick}>
+            <div className="modal-content large-modal modern-modal" onClick={e => e.stopPropagation()}>
+                <div className="modal-header modern-modal-header">
+                    <h3 className="modal-title">{isEditingEvent ? '✏️ Edit Event' : '🌪️ Add New Event'}</h3>
+                    <button type="button" className="modal-close" onClick={onClose}>×</button>
+                </div>
+                <form onSubmit={(e) => { e.preventDefault(); handleAddEvent(); }} className="event-form modern-form">
+                    {/* Basic Information - Two Column Grid */}
+                    <div className="form-section modern-form-section">
+                        <h4 className="form-section-title">📋 Basic Information</h4>
+                        <div className="form-grid-2">
+                            <div className="form-group">
+                                <label>Event Name *</label>
+                                <input
+                                    type="text"
+                                    name="name"
+                                    value={newEvent.name}
+                                    onChange={(e) => handleNewEventFieldChange('name', e.target.value)}
+                                    required
+                                    placeholder="e.g., Typhoon Kristine"
+                                    className="form-input modern-input"
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>Category</label>
+                                <select
+                                    name="category"
+                                    value={newEvent.category}
+                                    onChange={(e) => handleNewEventFieldChange('category', e.target.value)}
+                                    className="form-select modern-select"
+                                >
+                                    <option value="">-- Select --</option>
+                                    <option value="Super Typhoon">🌪️ Super Typhoon</option>
+                                    <option value="Typhoon">🌀 Typhoon</option>
+                                    <option value="Severe Tropical Storm">🌧️ Severe Tropical Storm</option>
+                                    <option value="Tropical Storm">🌧️ Tropical Storm</option>
+                                    <option value="Tropical Depression">☁️ Tropical Depression</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div className="form-grid-2">
+                            <div className="form-group">
+                                <label>Alert Level</label>
+                                <select
+                                    name="alertLevel"
+                                    value={newEvent.alertLevel}
+                                    onChange={(e) => handleNewEventFieldChange('alertLevel', e.target.value)}
+                                    className="form-select modern-select"
+                                >
+                                    <option value="">-- Select --</option>
+                                    <option value="RED">🔴 RED</option>
+                                    <option value="BLUE">🔵 BLUE</option>
+                                    <option value="WHITE">⚪ WHITE</option>
+                                </select>
+                            </div>
+                            <div className="form-group">
+                                <label>Deployment Status</label>
+                                <select
+                                    name="deployment"
+                                    value={newEvent.deployment}
+                                    onChange={(e) => handleNewEventFieldChange('deployment', e.target.value)}
+                                    className="form-select modern-select"
+                                >
+                                    <option value="Draft">📄 Draft</option>
+                                    <option value="Deployed">🚀 Deployed</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Date & Time - Two Column Grid */}
+                    <div className="form-section modern-form-section">
+                        <h4 className="form-section-title">📅 Date & Time</h4>
+                        <div className="form-grid-2">
+                            <div className="form-group">
+                                <label>Start Date/Time</label>
+                                <input
+                                    type="datetime-local"
+                                    name="startDateTime"
+                                    value={newEvent.startDateTime}
+                                    onChange={(e) => handleNewEventFieldChange('startDateTime', e.target.value)}
+                                    className="form-input modern-input"
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>End Date/Time</label>
+                                <input
+                                    type="datetime-local"
+                                    name="endDateTime"
+                                    value={newEvent.endDateTime}
+                                    onChange={(e) => handleNewEventFieldChange('endDateTime', e.target.value)}
+                                    className="form-input modern-input"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Track & Intensity - Two Column Grid */}
+                    <div className="form-section modern-form-section">
+                        <h4 className="form-section-title">🎯 Track & Intensity</h4>
+                        <div className="form-grid-2">
+                            <div className="form-group">
+                                <label>Track Positions</label>
+                                <input
+                                    type="text"
+                                    name="trackPositions"
+                                    value={newEvent.trackPositions}
+                                    onChange={(e) => handleNewEventFieldChange('trackPositions', e.target.value)}
+                                    placeholder="e.g., 13.0N 121.2E → 13.8N 122.1E"
+                                    className="form-input modern-input"
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>Intensity</label>
+                                <input
+                                    type="text"
+                                    name="intensity"
+                                    value={newEvent.intensity}
+                                    onChange={(e) => handleNewEventFieldChange('intensity', e.target.value)}
+                                    placeholder="e.g., 95 kph / 52 kt"
+                                    className="form-input modern-input"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Affected Areas */}
+                    <div className="form-section modern-form-section">
+                        <h4 className="form-section-title">📍 Affected Areas</h4>
+                        <div className="scope-grid-modern">
+                            {allProvinces.map(p => {
+                                const selected = newEvent.provinces.includes(p);
+                                return (
+                                    <button
+                                        type="button"
+                                        key={p}
+                                        className={`scope-item-modern ${selected ? 'selected' : ''}`}
+                                        onClick={() => {
+                                            setNewEvent(prev => {
+                                                const provinces = selected ? prev.provinces.filter(x => x !== p) : [...prev.provinces, p];
+                                                return {
+                                                    ...prev,
+                                                    provinces,
+                                                    sendToAllUsers: provinces.length === allProvinces.length
+                                                };
+                                            });
+                                        }}
+                                    >
+                                        {p}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                        <div className="form-group" style={{ marginTop: '12px' }}>
+                            <label className="checkbox-group modern-checkbox">
+                                <input
+                                    type="checkbox"
+                                    name="sendToAllUsers"
+                                    checked={newEvent.sendToAllUsers}
+                                    onChange={(e) => {
+                                        const checked = e.target.checked;
+                                        setNewEvent(prev => ({
+                                            ...prev,
+                                            sendToAllUsers: checked,
+                                            provinces: checked ? allProvinces : prev.provinces
+                                        }));
+                                    }}
+                                />
+                                Send to all offices
+                            </label>
+                        </div>
+                    </div>
+
+                    {/* Event Image */}
+                    <div className="form-section modern-form-section">
+                        <h4 className="form-section-title">🖼️ Event Image</h4>
+                        <div className="form-group">
+                            <input
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) => {
+                                    const file = e.target.files[0];
+                                    if (file) {
+                                        const reader = new FileReader();
+                                        reader.onload = () => handleNewEventFieldChange('imageUrl', reader.result);
+                                        reader.readAsDataURL(file);
+                                    }
+                                }}
+                                className="form-input modern-input"
+                            />
+                            {newEvent.imageUrl && (
+                                <div className="image-preview-container" style={{ marginTop: '12px' }}>
+                                    <img src={newEvent.imageUrl} alt="Preview" className="event-image-preview" />
+                                    <button
+                                        type="button"
+                                        className="remove-image-btn"
+                                        onClick={() => handleNewEventFieldChange('imageUrl', '')}
+                                    >
+                                        ✕ Remove
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="modal-buttons modern-modal-buttons">
+                        <button type="submit" className="btn-primary">
+                            {isEditingEvent ? '💾 Save Changes' : '🌪️ Create Event'}
+                        </button>
+                        <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+};
+
+// ===== EVENT DETAILS MODAL =====
+const EventDetailsModal = ({
+    isOpen,
+    onClose,
+    selectedEvent,
+    isEditingReportLink,
+    reportLinkInput,
+    setReportLinkInput,
+    setIsEditingReportLink,
+    handleSaveReportLink,
+    canEditEvents,
+    handleDeleteEvent,
+    handleEditEvent,
+    getAlertColor,
+    openImageModal,
+    handleRejectEvent
+}) => {
+    const [showRejectModal, setShowRejectModal] = useState(false);
+
+    useEffect(() => {
+        const handleEsc = (e) => {
+            if (e.key === 'Escape' && isOpen) {
+                onClose();
+            }
+        };
+        window.addEventListener('keydown', handleEsc);
+        return () => window.removeEventListener('keydown', handleEsc);
+    }, [isOpen, onClose]);
+
+    useEffect(() => {
+        if (isOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'unset';
+        }
+        return () => {
+            document.body.style.overflow = 'unset';
+        };
+    }, [isOpen]);
+
+    if (!isOpen || !selectedEvent) return null;
+
+    const handleOverlayClick = (e) => {
+        if (e.target === e.currentTarget) {
+            onClose();
+        }
+    };
+
+    const handleRejectClick = () => {
+        setShowRejectModal(true);
+    };
+
+    const handleRejectConfirm = (reason) => {
+        if (handleRejectEvent) {
+            handleRejectEvent(selectedEvent.id, reason);
+        }
+        setShowRejectModal(false);
+    };
+
+    return (
+        <>
+            <div className="modal-overlay" onClick={handleOverlayClick}>
+                <div className="modal-content event-details-modal" onClick={e => e.stopPropagation()}>
+                    <div className="details-header">
+                        <div className="details-title">{selectedEvent.name}</div>
+                        <button className="modal-close" onClick={onClose}>×</button>
+                    </div>
+                    <div className="detail-section">
+                        <div className="detail-section-title">📋 TROPICAL CYCLONE PRELIMINARY REPORT</div>
+                        <div className="report-panel">
+                            {isEditingReportLink ? (
+                                <div className="report-edit-group">
+                                    <input
+                                        type="url"
+                                        value={reportLinkInput}
+                                        onChange={(e) => setReportLinkInput(e.target.value)}
+                                        placeholder="Enter report URL..."
+                                    />
+                                    <button className="success" onClick={handleSaveReportLink}>Save</button>
+                                    <button onClick={() => setIsEditingReportLink(false)}>Cancel</button>
+                                </div>
+                            ) : (
+                                <div className="report-display-group">
+                                    {selectedEvent.reportLink ?
+                                        <a href={selectedEvent.reportLink} target="_blank" rel="noopener noreferrer">📄 View Report</a> :
+                                        <span>No report link</span>
+                                    }
+                                    {canEditEvents && (
+                                        <button className="edit-link-btn" onClick={() => {
+                                            setReportLinkInput(selectedEvent.reportLink || '');
+                                            setIsEditingReportLink(true);
+                                        }}>
+                                            ✏️ Add/Edit Link
+                                        </button>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                    <div className="details-grid">
+                        <div className="detail-box">
+                            <div className="detail-label">Category</div>
+                            <div className="detail-value">{selectedEvent.category || selectedEvent.type || '—'}</div>
+                        </div>
+                        <div className="detail-box">
+                            <div className="detail-label">Alert Level</div>
+                            <div className="detail-value">
+                                <span className="alert-badge" style={{ background: getAlertColor(selectedEvent.alertLevel) }}>
+                                    {selectedEvent.alertLevel || '—'}
+                                </span>
+                            </div>
+                        </div>
+                        <div className="detail-box">
+                            <div className="detail-label">Start Date</div>
+                            <div className="detail-value">{selectedEvent.startDateTime ? new Date(selectedEvent.startDateTime).toLocaleString() : selectedEvent.date || '—'}</div>
+                        </div>
+                        <div className="detail-box">
+                            <div className="detail-label">End Date</div>
+                            <div className="detail-value">{selectedEvent.endDateTime ? new Date(selectedEvent.endDateTime).toLocaleString() : 'Ongoing'}</div>
+                        </div>
+                    </div>
+                    <div className="detail-section">
+                        <div className="detail-section-title">📍 Deployment Scope</div>
+                        <div className="scope-tags">
+                            {selectedEvent.provinces?.map((p, i) => (
+                                <span key={i} className="scope-tag">{p}</span>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="detail-section">
+                        <div className="detail-section-title">🎯 Track & Intensity</div>
+                        <div className="summary-panel">
+                            <p><strong>Positions:</strong> {selectedEvent.trackPositions || 'Not specified'}</p>
+                            <p><strong>Intensity:</strong> {selectedEvent.intensity || 'Not specified'}</p>
+                        </div>
+                    </div>
+                    {selectedEvent.imageUrl && (
+                        <div className="detail-section">
+                            <img src={selectedEvent.imageUrl} alt="Event" className="event-image-preview" onClick={() => openImageModal(selectedEvent.imageUrl)} />
+                        </div>
+                    )}
+                    {(selectedEvent.casualties || selectedEvent.power_status || selectedEvent.communication_lines || selectedEvent.damage_facilities || selectedEvent.assistance_provided || selectedEvent.related_incidents) && (
+                        <div className="detail-section">
+                            <div className="detail-section-title">💔 Damage Effects</div>
+                            <div className="damage-summary-grid">
+                                {selectedEvent.related_incidents > 0 && (
+                                    <div className="damage-item">
+                                        <span className="damage-label">Related Incidents</span>
+                                        <span className="damage-value">{selectedEvent.related_incidents}</span>
+                                        {selectedEvent.remark_related_incidents && <span className="damage-remark">{selectedEvent.remark_related_incidents}</span>}
+                                    </div>
+                                )}
+                                {selectedEvent.casualties > 0 && (
+                                    <div className="damage-item">
+                                        <span className="damage-label">Casualties</span>
+                                        <span className="damage-value">{selectedEvent.casualties}</span>
+                                        {selectedEvent.remark_casualties && <span className="damage-remark">{selectedEvent.remark_casualties}</span>}
+                                    </div>
+                                )}
+                                {selectedEvent.power_status && (
+                                    <div className="damage-item">
+                                        <span className="damage-label">Power Status</span>
+                                        <span className="damage-value">{selectedEvent.power_status}</span>
+                                        {selectedEvent.remark_power_status && <span className="damage-remark">{selectedEvent.remark_power_status}</span>}
+                                    </div>
+                                )}
+                                {selectedEvent.communication_lines && (
+                                    <div className="damage-item">
+                                        <span className="damage-label">Communication Lines</span>
+                                        <span className="damage-value">{selectedEvent.communication_lines}</span>
+                                        {selectedEvent.remark_communication_lines && <span className="damage-remark">{selectedEvent.remark_communication_lines}</span>}
+                                    </div>
+                                )}
+                                {selectedEvent.damage_facilities && (
+                                    <div className="damage-item">
+                                        <span className="damage-label">Damage to Facilities</span>
+                                        <span className="damage-value">{selectedEvent.damage_facilities}</span>
+                                        {selectedEvent.remark_damage_facilities && <span className="damage-remark">{selectedEvent.remark_damage_facilities}</span>}
+                                    </div>
+                                )}
+                                {selectedEvent.assistance_provided && (
+                                    <div className="damage-item">
+                                        <span className="damage-label">Assistance Provided</span>
+                                        <span className="damage-value">{selectedEvent.assistance_provided}</span>
+                                        {selectedEvent.remark_assistance_provided && <span className="damage-remark">{selectedEvent.remark_assistance_provided}</span>}
+                                    </div>
+                                )}
+                                {selectedEvent.work_suspension && (
+                                    <div className="damage-item">
+                                        <span className="damage-label">Work Suspension</span>
+                                        <span className="damage-value">✓ Yes</span>
+                                        {selectedEvent.remark_work_suspension && <span className="damage-remark">{selectedEvent.remark_work_suspension}</span>}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                    {selectedEvent.rejectionReason && (
+                        <div className="rejection-reason">
+                            <strong>Rejection reason:</strong> {selectedEvent.rejectionReason}
+                        </div>
+                    )}
+                    <div className="modal-buttons details-actions">
+                        {canEditEvents && (
+                            <>
+                                <button className="btn-danger" onClick={() => handleDeleteEvent(selectedEvent.id)}>🗑️ Delete</button>
+                                <button className="btn-primary" onClick={() => handleEditEvent(selectedEvent)}>✏️ Edit</button>
+                                {selectedEvent.status === 'pending' && (
+                                    <button className="btn-danger" onClick={handleRejectClick}>🚫 Reject</button>
+                                )}
+                            </>
+                        )}
+                        <button className="btn-secondary" onClick={onClose}>Close</button>
+                    </div>
+                </div>
+            </div>
+            <RejectModal
+                isOpen={showRejectModal}
+                onClose={() => setShowRejectModal(false)}
+                onConfirm={handleRejectConfirm}
+                title="Reject Event"
+                itemName={selectedEvent?.name}
+            />
+        </>
+    );
+};
+
+// ===== TYPHOON HISTORY CONTENT =====
+const TyphoonHistoryContent = ({ typhoonHistory, searchTerm, setSearchTerm, handleSearchChange, setSelectedEvent, setShowDetailsModal, getAlertColor }) => (
+    <div className="events-management">
+        <div className="events-header">
+            <h1>📜 Typhoon History</h1>
+            <div className="header-actions">
+                <div className="search-box-enhanced">
+                    <span className="search-icon">🔍</span>
+                    <input
+                        type="text"
+                        placeholder="Search history..."
+                        value={searchTerm}
+                        onChange={handleSearchChange}
+                        className="search-input-enhanced"
+                    />
+                    {searchTerm && (
+                        <button className="search-clear" onClick={() => setSearchTerm('')}>✕</button>
+                    )}
+                </div>
+            </div>
+        </div>
+        <div className="events-subtitle">Complete history of all typhoons and tropical cyclones</div>
+        <div className="events-table-container">
+            <table className="events-table">
+                <thead>
+                    <tr>
+                        <th>Event Name</th>
+                        <th>Category</th>
+                        <th>Alert Level</th>
+                        <th>Date</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {typhoonHistory.length > 0 ? typhoonHistory.map(event => (
+                        <tr
+                            key={event.id}
+                            onClick={() => {
+                                setSelectedEvent(event);
+                                setShowDetailsModal(true);
+                            }}
+                            className="history-row-clickable"
+                        >
+                            <td className="event-name">{event.name}</td>
+                            <td>{event.category || '—'}</td>
+                            <td><span className="alert-badge" style={{ background: getAlertColor(event.alertLevel) }}>{event.alertLevel}</span></td>
+                            <td>{event.date}</td>
+                            <td><span className="status-badge" style={{ background: '#6c757d' }}>Archived</span></td>
+                        </tr>
+                    )) : (
+                        <tr><td colSpan="5" style={{ textAlign: 'center', padding: '40px' }}>No typhoon history available.</td></tr>
+                    )}
+                </tbody>
+            </table>
+        </div>
+    </div>
+);
+
+// ============================================
+// MAIN DASHBOARD COMPONENT
+// ============================================
 const Dashboard = ({ onLogout, currentUser }) => {
     // ----------------------------- STATE -----------------------------
     const [officesData, setOfficesData] = useState(() => {
@@ -236,6 +1192,7 @@ const Dashboard = ({ onLogout, currentUser }) => {
             if (!merged[key].damage_details) merged[key].damage_details = [];
             if (!merged[key].equipment_details) merged[key].equipment_details = [];
             if (!merged[key].affected_staff) merged[key].affected_staff = [];
+            if (!merged[key].municipalities) merged[key].municipalities = DEFAULT_OFFICE_DATA[key]?.municipalities || [];
         });
         return merged;
     });
@@ -254,24 +1211,30 @@ const Dashboard = ({ onLogout, currentUser }) => {
     const [newSignal, setNewSignal] = useState(1);
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
+
+    // Modal states
     const [showAddModal, setShowAddModal] = useState(false);
     const [showDetailsModal, setShowDetailsModal] = useState(false);
+    const [showOfficeModal, setShowOfficeModal] = useState(false);
+    const [showRejectModal, setShowRejectModal] = useState(false);
+    const [showReportModal, setShowReportModal] = useState(false);
+    const [showReportReviewModal, setShowReportReviewModal] = useState(false);
+    const [showSettingsModal, setShowSettingsModal] = useState(false);
+    const [showUserModal, setShowUserModal] = useState(false);
+    const [showImageModal, setShowImageModal] = useState(false);
+    const [showNotificationsDropdown, setShowNotificationsDropdown] = useState(false);
+
     const [selectedEvent, setSelectedEvent] = useState(null);
     const [isEditingEvent, setIsEditingEvent] = useState(false);
     const [isEditingReportLink, setIsEditingReportLink] = useState(false);
     const [reportLinkInput, setReportLinkInput] = useState('');
-    const [showUserModal, setShowUserModal] = useState(false);
     const [isEditingUser, setIsEditingUser] = useState(false);
     const [userForm, setUserForm] = useState({ id: null, name: '', email: '', office: 'PSTO-La Union', role: 'USER', status: 'Active', password: '', profileImage: '' });
     const [userSearchTerm, setUserSearchTerm] = useState('');
     const [imageModalSrc, setImageModalSrc] = useState('');
-    const [showImageModal, setShowImageModal] = useState(false);
-    const [showOfficeModal, setShowOfficeModal] = useState(false);
     const [toast, setToast] = useState({ message: '', type: 'info', visible: false });
     const [rejectReason, setRejectReason] = useState('');
-    const [showRejectModal, setShowRejectModal] = useState(false);
     const [rejectEventId, setRejectEventId] = useState(null);
-    const [showReportModal, setShowReportModal] = useState(false);
     const [reportFormData, setReportFormData] = useState(null);
     const [reportNewDamage, setReportNewDamage] = useState({ description: '', cost: '', status: 'Reported' });
     const [reportNewEquipment, setReportNewEquipment] = useState({ name: '', description: '', cost: '', status: 'Reported' });
@@ -280,9 +1243,7 @@ const Dashboard = ({ onLogout, currentUser }) => {
     const [editingReportEquipmentIndex, setEditingReportEquipmentIndex] = useState(null);
     const [editingReportStaffIndex, setEditingReportStaffIndex] = useState(null);
     const [selectedReport, setSelectedReport] = useState(null);
-    const [showReportReviewModal, setShowReportReviewModal] = useState(false);
     const [reportRejectReason, setReportRejectReason] = useState('');
-    const [showNotificationsDropdown, setShowNotificationsDropdown] = useState(false);
     const toastTimerRef = useRef(null);
     const [expandedSections, setExpandedSections] = useState({
         warningSignals: true,
@@ -295,7 +1256,6 @@ const Dashboard = ({ onLogout, currentUser }) => {
         officeImage: true
     });
 
-    const [showSettingsModal, setShowSettingsModal] = useState(false);
     const [settingsData, setSettingsData] = useState({
         systemName: 'DOST Region 1 Disaster Management',
         notificationSound: true,
@@ -310,8 +1270,6 @@ const Dashboard = ({ onLogout, currentUser }) => {
     const [editingDamageIndex, setEditingDamageIndex] = useState(null);
     const [editingEquipmentIndex, setEditingEquipmentIndex] = useState(null);
     const [editingStaffIndex, setEditingStaffIndex] = useState(null);
-
-    const [bigNotification, setBigNotification] = useState(null);
 
     const [newEvent, setNewEvent] = useState({
         id: null,
@@ -456,6 +1414,7 @@ const Dashboard = ({ onLogout, currentUser }) => {
                 remark_work_suspension: '',
                 remark_assistance_provided: '',
                 damage_details: [],
+                equipment_details: [],
                 affected_staff: [],
                 imageUrl: officesData[office]?.imageUrl || ''
             };
@@ -586,18 +1545,614 @@ const Dashboard = ({ onLogout, currentUser }) => {
         showToast('User updated successfully.', 'success');
     };
 
-    // ----------------------------- ADD NEW EVENT MODAL -----------------------------
+    // ===== FIXED: Excel Export with proper table formatting =====
+    const handleExportExcel = () => {
+        const wb = XLSX.utils.book_new();
+
+        // ===== SHEET 1: Main Report with Tables =====
+        const reportData = [];
+
+        // Title Section
+        reportData.push(['SITUATIONAL REPORT']);
+        reportData.push([]);
+        reportData.push(['SITUATIONAL REPORT NO.', '2']);
+        reportData.push(['TROPICAL CYCLONE:', activeEvent?.name || 'N/A']);
+        reportData.push(['CATEGORY:', activeEvent?.category || 'N/A']);
+        reportData.push(['DATE:', new Date().toLocaleString()]);
+        reportData.push([]);
+
+        // I. SITUATION SUMMARY
+        reportData.push(['I. SITUATION SUMMARY']);
+        reportData.push([]);
+        reportData.push(['A. GENERAL WEATHER CONDITION']);
+
+        // Weather Table Headers
+        reportData.push(['PROVINCE', 'TROPICAL CYCLONE WARNING SIGNAL', 'GENERAL WEATHER SITUATION']);
+
+        // Weather Data
+        const provinces = ['Ilocos Norte', 'Ilocos Sur', 'La Union', 'Pangasinan'];
+        provinces.forEach(prov => {
+            const officeKey = Object.keys(officesData).find(key => key.includes(prov));
+            const data = officeKey ? officesData[officeKey] : null;
+            const signals = data?.warning_signals ?
+                Object.entries(data.warning_signals).map(([mun, sig]) => `${mun} (Signal ${sig})`).join('; ') :
+                'No signal';
+            reportData.push([prov, signals, data?.general_weather || '']);
+        });
+        reportData.push([]);
+
+        // II. EFFECTS
+        reportData.push(['II. EFFECTS']);
+        reportData.push([]);
+
+        // A. RELATED INCIDENTS
+        reportData.push(['A. RELATED INCIDENTS']);
+        reportData.push(['OFFICE', 'INCIDENTS', 'REMARKS']);
+        Object.entries(officesData).forEach(([office, data]) => {
+            const incidents = data.related_incidents || 0;
+            reportData.push([
+                office,
+                `${incidents} - ${incidents === 0 ? 'No incidents reported' : incidents + ' incident(s) reported'}`,
+                data.remark_related_incidents || ''
+            ]);
+        });
+        reportData.push([]);
+
+        // B. CASUALTIES
+        reportData.push(['B. CASUALTIES']);
+        reportData.push(['PROVINCE', 'CASUALTIES', 'REMARKS']);
+        Object.entries(officesData).forEach(([office, data]) => {
+            const casualties = data.casualties || 0;
+            reportData.push([
+                office,
+                `${casualties} - ${casualties === 0 ? 'No casualties reported' : casualties + ' casualty(ies) reported'}`,
+                data.remark_casualties || ''
+            ]);
+        });
+        reportData.push([]);
+
+        // C. POWER
+        reportData.push(['C. POWER']);
+        reportData.push(['PROVINCE', 'POWER STATUS', 'REMARKS']);
+        Object.entries(officesData).forEach(([office, data]) => {
+            reportData.push([
+                office,
+                data.power_status || '0 - No data',
+                data.remark_power_status || ''
+            ]);
+        });
+        reportData.push([]);
+
+        // D. COMMUNICATION LINES
+        reportData.push(['D. COMMUNICATION LINES']);
+        reportData.push(['PROVINCE', 'COMMUNICATION STATUS', 'REMARKS']);
+        Object.entries(officesData).forEach(([office, data]) => {
+            reportData.push([
+                office,
+                data.communication_lines || '0 - No data',
+                data.remark_communication_lines || ''
+            ]);
+        });
+        reportData.push([]);
+
+        // E. DAMAGE TO FACILITIES/EQUIPMENT
+        reportData.push(['E. DAMAGE TO FACILITIES/EQUIPMENT']);
+        reportData.push(['PROVINCE', 'DAMAGE STATUS', 'REMARKS']);
+        Object.entries(officesData).forEach(([office, data]) => {
+            reportData.push([
+                office,
+                data.damage_facilities || '0 - No damage reported',
+                data.remark_damage_facilities || ''
+            ]);
+        });
+        reportData.push([]);
+
+        // F. WORK SUSPENSION
+        reportData.push(['F. WORK SUSPENSION']);
+        reportData.push(['PROVINCE', 'SUSPENSION STATUS', 'REMARKS']);
+        Object.entries(officesData).forEach(([office, data]) => {
+            const suspension = data.work_suspension ? '1 - Work Suspension declared' : '0 - No suspension';
+            reportData.push([
+                office,
+                suspension,
+                data.remark_work_suspension || ''
+            ]);
+        });
+        reportData.push([]);
+
+        // G. ASSISTANCE PROVIDED
+        reportData.push(['G. ASSISTANCE PROVIDED']);
+        reportData.push(['PROVINCE', 'ASSISTANCE', 'REMARKS']);
+        Object.entries(officesData).forEach(([office, data]) => {
+            reportData.push([
+                office,
+                data.assistance_provided || 'None',
+                data.remark_assistance_provided || ''
+            ]);
+        });
+        reportData.push([]);
+
+        // ===== DAMAGE BUILDING DETAILS TABLE =====
+        reportData.push(['DAMAGE BUILDING DETAILS']);
+        reportData.push(['PROVINCE', 'DESCRIPTION', 'COST', 'STATUS', 'DATE']);
+        let hasBuildingDamage = false;
+        Object.entries(officesData).forEach(([office, data]) => {
+            if (data.damage_details && data.damage_details.length > 0) {
+                hasBuildingDamage = true;
+                data.damage_details.forEach(damage => {
+                    reportData.push([
+                        office,
+                        damage.description || '',
+                        damage.cost ? `₱${damage.cost}` : '',
+                        damage.status || 'Reported',
+                        damage.date ? new Date(damage.date).toLocaleDateString() : ''
+                    ]);
+                });
+            }
+        });
+        if (!hasBuildingDamage) {
+            reportData.push(['No building damage records reported.', '', '', '', '']);
+        }
+        reportData.push([]);
+
+        // ===== EQUIPMENT DAMAGE DETAILS TABLE =====
+        reportData.push(['EQUIPMENT DAMAGE DETAILS']);
+        reportData.push(['PROVINCE', 'EQUIPMENT NAME', 'DESCRIPTION', 'COST', 'STATUS', 'DATE']);
+        let hasEquipmentDamage = false;
+        Object.entries(officesData).forEach(([office, data]) => {
+            if (data.equipment_details && data.equipment_details.length > 0) {
+                hasEquipmentDamage = true;
+                data.equipment_details.forEach(equip => {
+                    reportData.push([
+                        office,
+                        equip.name || '',
+                        equip.description || '',
+                        equip.cost ? `₱${equip.cost}` : '',
+                        equip.status || 'Reported',
+                        equip.date ? new Date(equip.date).toLocaleDateString() : ''
+                    ]);
+                });
+            }
+        });
+        if (!hasEquipmentDamage) {
+            reportData.push(['No equipment damage records reported.', '', '', '', '', '']);
+        }
+        reportData.push([]);
+
+        // ===== AFFECTED STAFF DETAILS TABLE =====
+        reportData.push(['AFFECTED STAFF DETAILS']);
+        reportData.push(['PROVINCE', 'STAFF NAME', 'AREA', 'ASSISTANCE', 'STATUS']);
+        let hasStaff = false;
+        Object.entries(officesData).forEach(([office, data]) => {
+            if (data.affected_staff && data.affected_staff.length > 0) {
+                hasStaff = true;
+                data.affected_staff.forEach(staff => {
+                    reportData.push([
+                        office,
+                        staff.name || '',
+                        staff.area || '',
+                        staff.assistance || 'None',
+                        staff.status || 'Active'
+                    ]);
+                });
+            }
+        });
+        if (!hasStaff) {
+            reportData.push(['No affected staff records reported.', '', '', '', '']);
+        }
+        reportData.push([]);
+
+        // Narrative Summary
+        reportData.push(['NARRATIVE SUMMARY']);
+        const narrative = Object.values(officesData).map(office => office.remark).filter(Boolean).join(' ') || 'No additional remarks.';
+        reportData.push([narrative]);
+        reportData.push([]);
+
+        // Prepared by Section
+        reportData.push(['Prepared by:']);
+        reportData.push(['DOST 1 DRRM OFFICERS']);
+        reportData.push(['Regional/Provincial Focal']);
+        reportData.push(['']);
+        reportData.push(['EDRUSSELL S. CASTILLO']);
+        reportData.push(['Project Technical Assistant I']);
+        reportData.push(['DRRM Unit Staff']);
+        reportData.push(['']);
+        reportData.push(['MICHAEL JOHN C. MAQUILING']);
+        reportData.push(['Supervising Science Research Specialist']);
+        reportData.push(['DRRMU Regional Focal']);
+        reportData.push([]);
+        reportData.push(['Noted by:']);
+        reportData.push([]);
+        reportData.push(['DR. TERESITA A. TABAOG']);
+        reportData.push(['Regional Director']);
+
+        // Create worksheet
+        const ws = XLSX.utils.aoa_to_sheet(reportData);
+
+        // ===== Apply column widths =====
+        const colWidths = [];
+        const maxCols = reportData.reduce((max, row) => Math.max(max, row.length), 0);
+
+        for (let col = 0; col < maxCols; col++) {
+            let maxWidth = 15;
+            for (let row = 0; row < reportData.length; row++) {
+                const cell = reportData[row]?.[col];
+                if (cell !== undefined && cell !== null) {
+                    const cellStr = String(cell);
+                    const width = Math.ceil(cellStr.length * 1.2);
+                    if (width > maxWidth) {
+                        maxWidth = Math.min(width, 60);
+                    }
+                }
+            }
+            colWidths.push({ wch: maxWidth });
+        }
+        ws['!cols'] = colWidths;
+
+        // ===== Apply table formatting with borders =====
+        const range = XLSX.utils.decode_range(ws['!ref']);
+
+        // Find header rows dynamically
+        let headerRows = [];
+        for (let r = range.s.r; r <= range.e.r; r++) {
+            const cell = ws[XLSX.utils.encode_cell({ r, c: 0 })];
+            if (cell && cell.v) {
+                const val = String(cell.v);
+                if (val.includes('PROVINCE') || val.includes('OFFICE') || val.includes('REMARKS') ||
+                    val.includes('INCIDENTS') || val.includes('CASUALTIES') || val.includes('POWER') ||
+                    val.includes('COMMUNICATION') || val.includes('DAMAGE') || val.includes('SUSPENSION') ||
+                    val.includes('ASSISTANCE') || val.includes('DESCRIPTION') || val.includes('COST') ||
+                    val.includes('STATUS') || val.includes('DATE') || val.includes('EQUIPMENT') ||
+                    val.includes('STAFF')) {
+                    headerRows.push(r);
+                }
+            }
+        }
+
+        // Apply formatting to all cells
+        for (let r = range.s.r; r <= range.e.r; r++) {
+            for (let c = range.s.c; c <= range.e.c; c++) {
+                const address = XLSX.utils.encode_cell({ r, c });
+                if (!ws[address]) continue;
+
+                const cellValue = ws[address].v;
+                const isTitle = r === 0;
+                const isSectionHeader = typeof cellValue === 'string' &&
+                    (cellValue.includes('I.') || cellValue.includes('II.') ||
+                        cellValue.includes('A.') || cellValue.includes('B.') ||
+                        cellValue.includes('C.') || cellValue.includes('D.') ||
+                        cellValue.includes('E.') || cellValue.includes('F.') ||
+                        cellValue.includes('G.') || cellValue.includes('DAMAGE BUILDING') ||
+                        cellValue.includes('EQUIPMENT DAMAGE') || cellValue.includes('AFFECTED STAFF') ||
+                        cellValue.includes('NARRATIVE SUMMARY'));
+
+                const isTableHeader = headerRows.includes(r) && c < 7;
+                const isPreparedBy = typeof cellValue === 'string' &&
+                    (cellValue.includes('Prepared by:') || cellValue.includes('Noted by:') ||
+                        cellValue.includes('DOST 1 DRRM') || cellValue.includes('Regional/Provincial') ||
+                        cellValue.includes('EDRUSSELL') || cellValue.includes('MICHAEL') ||
+                        cellValue.includes('DR. TERESITA'));
+
+                // Determine if cell is in a table body
+                let isTableBody = false;
+                for (let i = 0; i < headerRows.length; i++) {
+                    const headerRow = headerRows[i];
+                    const nextHeaderRow = headerRows[i + 1] || range.e.r + 1;
+                    if (r > headerRow && r < nextHeaderRow && c < 7) {
+                        isTableBody = true;
+                        break;
+                    }
+                }
+
+                // Build cell style
+                let style = {
+                    font: {
+                        bold: isTitle || isSectionHeader || isTableHeader || isPreparedBy,
+                        sz: isTitle ? 16 : (isSectionHeader || isTableHeader ? 12 : 10)
+                    },
+                    alignment: {
+                        wrapText: true,
+                        vertical: 'center',
+                        horizontal: isTableHeader ? 'center' : 'left'
+                    },
+                    border: {}
+                };
+
+                // Add borders for table cells
+                if (isTableHeader || isTableBody) {
+                    style.border = {
+                        top: { style: 'thin', color: { rgb: "000000" } },
+                        bottom: { style: 'thin', color: { rgb: "000000" } },
+                        left: { style: 'thin', color: { rgb: "000000" } },
+                        right: { style: 'thin', color: { rgb: "000000" } }
+                    };
+
+                    // Background color for headers
+                    if (isTableHeader) {
+                        style.fill = { fgColor: { rgb: "1a56db" } };
+                        style.font.color = { rgb: "FFFFFF" };
+                        style.font.bold = true;
+                    }
+
+                    // Alternate row colors for data
+                    if (isTableBody && r % 2 === 0) {
+                        style.fill = { fgColor: { rgb: "f3f4f6" } };
+                    }
+                }
+
+                // Special formatting for Prepared by section
+                if (isPreparedBy) {
+                    style.font.bold = true;
+                    style.font.sz = 11;
+                }
+
+                ws[address] = {
+                    ...ws[address],
+                    s: style
+                };
+            }
+        }
+
+        // ===== Merge cells for title =====
+        ws['!merges'] = [
+            { s: { r: 0, c: 0 }, e: { r: 0, c: maxCols - 1 } }, // Main title
+        ];
+
+        // Append sheet
+        XLSX.utils.book_append_sheet(wb, ws, 'SITREP');
+
+        // ===== SHEET 2: Raw Data with Table Formatting =====
+        const rawData = [];
+        const headers = [
+            'PSTO Office',
+            'Warning Signals',
+            'General Weather',
+            'Related Incidents',
+            'Incident Remarks',
+            'Casualties',
+            'Casualty Remarks',
+            'Power Status',
+            'Power Remarks',
+            'Communication',
+            'Comm Remarks',
+            'Damage',
+            'Damage Remarks',
+            'Work Suspension',
+            'Work Suspension Remarks',
+            'Assistance',
+            'Assistance Remarks',
+            'Overall Remarks',
+            'Building Damage Count',
+            'Equipment Damage Count',
+            'Affected Staff Count'
+        ];
+        rawData.push(headers);
+
+        Object.entries(officesData).forEach(([office, data]) => {
+            const signals = Object.entries(data.warning_signals || {})
+                .map(([mun, sig]) => `${mun}: ${sig}`)
+                .join('; ') || 'None';
+
+            rawData.push([
+                office,
+                signals,
+                data.general_weather || '',
+                data.related_incidents ?? 0,
+                data.remark_related_incidents || '',
+                data.casualties ?? 0,
+                data.remark_casualties || '',
+                data.power_status || '',
+                data.remark_power_status || '',
+                data.communication_lines || '',
+                data.remark_communication_lines || '',
+                data.damage_facilities || '',
+                data.remark_damage_facilities || '',
+                data.work_suspension ? 'Yes' : 'No',
+                data.remark_work_suspension || '',
+                data.assistance_provided || '',
+                data.remark_assistance_provided || '',
+                data.remark || '',
+                (data.damage_details || []).length,
+                (data.equipment_details || []).length,
+                (data.affected_staff || []).length
+            ]);
+        });
+
+        const wsRaw = XLSX.utils.aoa_to_sheet(rawData);
+
+        // Auto-fit columns for raw data
+        const rawColWidths = [];
+        for (let col = 0; col < rawData[0].length; col++) {
+            let maxWidth = 15;
+            for (let row = 0; row < rawData.length; row++) {
+                const cell = rawData[row]?.[col];
+                if (cell !== undefined && cell !== null) {
+                    const cellStr = String(cell);
+                    const width = Math.ceil(cellStr.length * 1.2);
+                    if (width > maxWidth) {
+                        maxWidth = Math.min(width, 40);
+                    }
+                }
+            }
+            rawColWidths.push({ wch: maxWidth });
+        }
+        wsRaw['!cols'] = rawColWidths;
+
+        // Format raw data table with borders
+        const rawRange = XLSX.utils.decode_range(wsRaw['!ref']);
+        for (let r = rawRange.s.r; r <= rawRange.e.r; r++) {
+            for (let c = rawRange.s.c; c <= rawRange.e.c; c++) {
+                const address = XLSX.utils.encode_cell({ r, c });
+                if (!wsRaw[address]) continue;
+
+                const isHeader = r === 0;
+
+                let style = {
+                    font: { bold: isHeader, sz: isHeader ? 11 : 10 },
+                    alignment: {
+                        wrapText: true,
+                        vertical: 'center',
+                        horizontal: isHeader ? 'center' : 'left'
+                    },
+                    border: {
+                        top: { style: 'thin', color: { rgb: "000000" } },
+                        bottom: { style: 'thin', color: { rgb: "000000" } },
+                        left: { style: 'thin', color: { rgb: "000000" } },
+                        right: { style: 'thin', color: { rgb: "000000" } }
+                    }
+                };
+
+                if (isHeader) {
+                    style.fill = { fgColor: { rgb: "1a56db" } };
+                    style.font.color = { rgb: "FFFFFF" };
+                    style.font.bold = true;
+                } else if (r % 2 === 0) {
+                    style.fill = { fgColor: { rgb: "f3f4f6" } };
+                }
+
+                wsRaw[address] = {
+                    ...wsRaw[address],
+                    s: style
+                };
+            }
+        }
+
+        XLSX.utils.book_append_sheet(wb, wsRaw, 'Raw Data');
+
+        // Generate file
+        XLSX.writeFile(wb, `SITREP_${activeEvent?.name || 'NO_EVENT'}_${new Date().toISOString().slice(0, 19)}.xlsx`);
+        showToast('Situational Report exported successfully.', 'success');
+        addNotification('Excel Exported', 'Complete SITREP exported with table formatting.', 'success');
+    };
+
+    // ===== Reject Event Handler =====
+    const handleRejectEvent = (eventId, reason) => {
+        if (!reason || !reason.trim()) {
+            showToast('Please provide a rejection reason.', 'warning');
+            return;
+        }
+
+        const updatedEvents = events.map(event => {
+            if (event.id === eventId) {
+                return {
+                    ...event,
+                    status: 'rejected',
+                    rejectionReason: reason,
+                    deployment: 'Draft'
+                };
+            }
+            return event;
+        });
+
+        setEvents(updatedEvents);
+
+        if (selectedEvent?.id === eventId) {
+            setSelectedEvent({
+                ...selectedEvent,
+                status: 'rejected',
+                rejectionReason: reason,
+                deployment: 'Draft'
+            });
+        }
+
+        setShowDetailsModal(false);
+
+        const eventName = events.find(e => e.id === eventId)?.name;
+        addNotification(
+            'Event Rejected',
+            `Event "${eventName}" has been rejected. Reason: ${reason}`,
+            'error'
+        );
+        showToast(`Event "${eventName}" rejected.`, 'error');
+
+        try {
+            saveToStorage('dash_events', updatedEvents);
+        } catch (error) {
+            console.error('Failed to sync rejection:', error);
+            showToast('Failed to sync rejection to database.', 'error');
+        }
+    };
+
+    // ===== Reject Report Handler =====
+    const handleRejectReport = (reportId, reason) => {
+        if (!reason || !reason.trim()) {
+            showToast('Please provide a rejection reason.', 'warning');
+            return;
+        }
+
+        setPendingReports(prev => prev.map(r =>
+            r.id === reportId
+                ? { ...r, status: 'rejected', remarks: reason }
+                : r
+        ));
+
+        const report = pendingReports.find(r => r.id === reportId);
+        addNotification(
+            'Report Rejected',
+            `Report from ${report?.office || 'Unknown office'} was rejected. Reason: ${reason}`,
+            'error'
+        );
+        showToast('Report rejected.', 'error');
+
+        try {
+            const updatedReports = pendingReports.map(r =>
+                r.id === reportId
+                    ? { ...r, status: 'rejected', remarks: reason }
+                    : r
+            );
+            saveToStorage('dash_pendingReports', updatedReports);
+        } catch (error) {
+            console.error('Failed to sync rejection:', error);
+        }
+    };
+
+    // ----------------------------- REPORT FUNCTIONS -----------------------------
     const openReportModal = () => {
-        resetNewEventForm();
-        setIsEditingEvent(false);
+        const currentData = officesData[selectedOffice] || {};
+        setReportFormData({
+            warning_signals: { ...(currentData.warning_signals || {}) },
+            general_weather: currentData.general_weather || '',
+            related_incidents: currentData.related_incidents || 0,
+            casualties: currentData.casualties || 0,
+            power_status: currentData.power_status || '',
+            communication_lines: currentData.communication_lines || '',
+            damage_facilities: currentData.damage_facilities || '',
+            work_suspension: currentData.work_suspension || false,
+            assistance_provided: currentData.assistance_provided || '',
+            remark: currentData.remark || '',
+            remark_related_incidents: currentData.remark_related_incidents || '',
+            remark_casualties: currentData.remark_casualties || '',
+            remark_power_status: currentData.remark_power_status || '',
+            remark_communication_lines: currentData.remark_communication_lines || '',
+            remark_damage_facilities: currentData.remark_damage_facilities || '',
+            remark_work_suspension: currentData.remark_work_suspension || '',
+            remark_assistance_provided: currentData.remark_assistance_provided || '',
+            municipalities: [...(currentData.municipalities || [])],
+            damage_details: [...(currentData.damage_details || [])],
+            equipment_details: [...(currentData.equipment_details || [])],
+            affected_staff: [...(currentData.affected_staff || [])],
+            imageUrl: currentData.imageUrl || ''
+        });
         setShowReportModal(true);
     };
 
     const handleReportFieldChange = (field, value) => {
-        setReportFormData(prev => ({
-            ...prev,
-            [field]: value
-        }));
+        setReportFormData(prev => {
+            if (!prev) {
+                return {
+                    warning_signals: {},
+                    municipalities: [],
+                    damage_details: [],
+                    equipment_details: [],
+                    affected_staff: [],
+                    [field]: value
+                };
+            }
+            return {
+                ...prev,
+                [field]: value
+            };
+        });
     };
 
     const handleReportAddDamage = () => {
@@ -611,24 +2166,39 @@ const Dashboard = ({ onLogout, currentUser }) => {
             date: new Date().toISOString(),
             reportedBy: currentUser?.name || 'Unknown'
         };
-        setReportFormData(prev => ({
-            ...prev,
-            damage_details: [...(prev.damage_details || []), damage]
-        }));
+        setReportFormData(prev => {
+            if (!prev) {
+                return {
+                    warning_signals: {},
+                    municipalities: [],
+                    damage_details: [damage],
+                    equipment_details: [],
+                    affected_staff: []
+                };
+            }
+            return {
+                ...prev,
+                damage_details: [...(prev.damage_details || []), damage]
+            };
+        });
         setReportNewDamage({ description: '', cost: '', status: 'Reported' });
         showToast('Damage added.', 'success');
     };
 
     const handleReportEditDamage = (index) => {
-        const damage = reportFormData.damage_details[index];
-        setReportNewDamage({ ...damage });
-        setEditingReportDamageIndex(index);
+        if (!reportFormData) return;
+        const damage = reportFormData.damage_details?.[index];
+        if (damage) {
+            setReportNewDamage({ ...damage });
+            setEditingReportDamageIndex(index);
+        }
     };
 
     const handleReportUpdateDamage = () => {
-        if (editingReportDamageIndex === null) return;
-        const updated = [...reportFormData.damage_details];
+        if (editingReportDamageIndex === null || !reportFormData) return;
+        const updated = [...(reportFormData.damage_details || [])];
         const existing = updated[editingReportDamageIndex];
+        if (!existing) return;
         updated[editingReportDamageIndex] = {
             ...reportNewDamage,
             id: existing.id,
@@ -643,7 +2213,8 @@ const Dashboard = ({ onLogout, currentUser }) => {
 
     const handleReportDeleteDamage = (index) => {
         if (!window.confirm('Delete this damage record?')) return;
-        const updated = reportFormData.damage_details.filter((_, i) => i !== index);
+        if (!reportFormData) return;
+        const updated = (reportFormData.damage_details || []).filter((_, i) => i !== index);
         setReportFormData(prev => ({ ...prev, damage_details: updated }));
         showToast('Damage deleted.', 'info');
     };
@@ -659,24 +2230,39 @@ const Dashboard = ({ onLogout, currentUser }) => {
             date: new Date().toISOString(),
             reportedBy: currentUser?.name || 'Unknown'
         };
-        setReportFormData(prev => ({
-            ...prev,
-            equipment_details: [...(prev.equipment_details || []), equipment]
-        }));
+        setReportFormData(prev => {
+            if (!prev) {
+                return {
+                    warning_signals: {},
+                    municipalities: [],
+                    damage_details: [],
+                    equipment_details: [equipment],
+                    affected_staff: []
+                };
+            }
+            return {
+                ...prev,
+                equipment_details: [...(prev.equipment_details || []), equipment]
+            };
+        });
         setReportNewEquipment({ name: '', description: '', cost: '', status: 'Reported' });
         showToast('Equipment added.', 'success');
     };
 
     const handleReportEditEquipment = (index) => {
-        const equipment = reportFormData.equipment_details[index];
-        setReportNewEquipment({ ...equipment });
-        setEditingReportEquipmentIndex(index);
+        if (!reportFormData) return;
+        const equipment = reportFormData.equipment_details?.[index];
+        if (equipment) {
+            setReportNewEquipment({ ...equipment });
+            setEditingReportEquipmentIndex(index);
+        }
     };
 
     const handleReportUpdateEquipment = () => {
-        if (editingReportEquipmentIndex === null) return;
-        const updated = [...reportFormData.equipment_details];
+        if (editingReportEquipmentIndex === null || !reportFormData) return;
+        const updated = [...(reportFormData.equipment_details || [])];
         const existing = updated[editingReportEquipmentIndex];
+        if (!existing) return;
         updated[editingReportEquipmentIndex] = {
             ...reportNewEquipment,
             id: existing.id,
@@ -691,7 +2277,8 @@ const Dashboard = ({ onLogout, currentUser }) => {
 
     const handleReportDeleteEquipment = (index) => {
         if (!window.confirm('Delete this equipment record?')) return;
-        const updated = reportFormData.equipment_details.filter((_, i) => i !== index);
+        if (!reportFormData) return;
+        const updated = (reportFormData.equipment_details || []).filter((_, i) => i !== index);
         setReportFormData(prev => ({ ...prev, equipment_details: updated }));
         showToast('Equipment deleted.', 'info');
     };
@@ -706,24 +2293,39 @@ const Dashboard = ({ onLogout, currentUser }) => {
             id: Date.now(),
             dateAdded: new Date().toISOString()
         };
-        setReportFormData(prev => ({
-            ...prev,
-            affected_staff: [...(prev.affected_staff || []), staff]
-        }));
+        setReportFormData(prev => {
+            if (!prev) {
+                return {
+                    warning_signals: {},
+                    municipalities: [],
+                    damage_details: [],
+                    equipment_details: [],
+                    affected_staff: [staff]
+                };
+            }
+            return {
+                ...prev,
+                affected_staff: [...(prev.affected_staff || []), staff]
+            };
+        });
         setReportNewStaff({ name: '', area: '', assistance: '', status: 'Active' });
         showToast('Staff added.', 'success');
     };
 
     const handleReportEditStaff = (index) => {
-        const staff = reportFormData.affected_staff[index];
-        setReportNewStaff({ ...staff });
-        setEditingReportStaffIndex(index);
+        if (!reportFormData) return;
+        const staff = reportFormData.affected_staff?.[index];
+        if (staff) {
+            setReportNewStaff({ ...staff });
+            setEditingReportStaffIndex(index);
+        }
     };
 
     const handleReportUpdateStaff = () => {
-        if (editingReportStaffIndex === null) return;
-        const updated = [...reportFormData.affected_staff];
+        if (editingReportStaffIndex === null || !reportFormData) return;
+        const updated = [...(reportFormData.affected_staff || [])];
         const existing = updated[editingReportStaffIndex];
+        if (!existing) return;
         updated[editingReportStaffIndex] = {
             ...reportNewStaff,
             id: existing.id,
@@ -737,35 +2339,65 @@ const Dashboard = ({ onLogout, currentUser }) => {
 
     const handleReportDeleteStaff = (index) => {
         if (!window.confirm('Delete this staff record?')) return;
-        const updated = reportFormData.affected_staff.filter((_, i) => i !== index);
+        if (!reportFormData) return;
+        const updated = (reportFormData.affected_staff || []).filter((_, i) => i !== index);
         setReportFormData(prev => ({ ...prev, affected_staff: updated }));
         showToast('Staff deleted.', 'info');
     };
 
     const handleReportSignalChange = (mun, signal) => {
-        setReportFormData(prev => ({
-            ...prev,
-            warning_signals: { ...prev.warning_signals, [mun]: parseInt(signal) }
-        }));
+        setReportFormData(prev => {
+            if (!prev) {
+                return {
+                    warning_signals: { [mun]: parseInt(signal) },
+                    municipalities: [],
+                    damage_details: [],
+                    equipment_details: [],
+                    affected_staff: []
+                };
+            }
+            return {
+                ...prev,
+                warning_signals: { ...(prev.warning_signals || {}), [mun]: parseInt(signal) }
+            };
+        });
     };
 
     const handleReportAddMunicipality = () => {
-        if (newMunicipality.trim() && !reportFormData.municipalities.includes(newMunicipality)) {
-            setReportFormData({
-                ...reportFormData,
-                municipalities: [...reportFormData.municipalities, newMunicipality],
-                warning_signals: { ...reportFormData.warning_signals, [newMunicipality]: newSignal },
-            });
-            setNewMunicipality('');
-            setNewSignal(1);
-        }
+        setReportFormData(prev => {
+            if (!prev) {
+                if (newMunicipality.trim()) {
+                    return {
+                        warning_signals: { [newMunicipality]: newSignal },
+                        municipalities: [newMunicipality],
+                        damage_details: [],
+                        equipment_details: [],
+                        affected_staff: []
+                    };
+                }
+                return null;
+            }
+            if (newMunicipality.trim() && !(prev.municipalities || []).includes(newMunicipality)) {
+                return {
+                    ...prev,
+                    municipalities: [...(prev.municipalities || []), newMunicipality],
+                    warning_signals: { ...(prev.warning_signals || {}), [newMunicipality]: newSignal },
+                };
+            }
+            return prev;
+        });
+        setNewMunicipality('');
+        setNewSignal(1);
     };
 
     const handleReportRemoveMunicipality = (mun) => {
-        const updatedMuns = reportFormData.municipalities.filter(m => m !== mun);
-        const updatedSignals = { ...reportFormData.warning_signals };
-        delete updatedSignals[mun];
-        setReportFormData({ ...reportFormData, municipalities: updatedMuns, warning_signals: updatedSignals });
+        setReportFormData(prev => {
+            if (!prev) return null;
+            const updatedMuns = (prev.municipalities || []).filter(m => m !== mun);
+            const updatedSignals = { ...(prev.warning_signals || {}) };
+            delete updatedSignals[mun];
+            return { ...prev, municipalities: updatedMuns, warning_signals: updatedSignals };
+        });
     };
 
     const submitReport = () => {
@@ -774,7 +2406,6 @@ const Dashboard = ({ onLogout, currentUser }) => {
             return;
         }
 
-        // Create a deep copy to avoid reference issues
         const submitData = {
             ...reportFormData,
             warning_signals: { ...(reportFormData.warning_signals || {}) },
@@ -1039,7 +2670,6 @@ const Dashboard = ({ onLogout, currentUser }) => {
         }));
     };
 
-    // ===== FIXED: Region 1 Save =====
     const handleSave = () => {
         if (selectedOffice === 'PSTO-Region-1') {
             showToast('Cannot save Region 1 data directly. Select a specific PSTO office.', 'warning');
@@ -1491,31 +3121,6 @@ const Dashboard = ({ onLogout, currentUser }) => {
         URL.revokeObjectURL(url);
     };
 
-    const handleExportExcel = () => {
-        const sheetData = [];
-        sheetData.push(['PSTO Office', 'Warning Signals', 'General Weather', 'Related Incidents', 'Incident Remarks', 'Casualties', 'Casualty Remarks', 'Power Status', 'Power Remarks', 'Communication', 'Comm Remarks', 'Damage', 'Damage Remarks', 'Work Suspension', 'Work Suspension Remarks', 'Assistance', 'Assistance Remarks', 'Overall Remarks', 'Damage Building', 'Affected Staff']);
-        Object.entries(officesData).forEach(([office, data]) => {
-            const signals = Object.entries(data.warning_signals || {}).map(([mun, sig]) => `${mun}: ${sig}`).join('; ') || 'None';
-            const buildingDamages = (data.damage_details || []).map(d => `${d.description || ''}${d.cost ? ` (₱${d.cost})` : ''}`).join('; ');
-            const equipmentDamages = (data.equipment_details || []).map(e => `${e.name || ''}${e.description ? ` - ${e.description}` : ''}${e.cost ? ` (₱${e.cost})` : ''}`).join('; ');
-            const damages = [buildingDamages, equipmentDamages].filter(Boolean).join(' | ') || 'None';
-            const staff = (data.affected_staff || []).map(s => `${s.name || ''}${s.area ? ` - ${s.area}` : ''}`).join('; ') || 'None';
-            sheetData.push([
-                office, signals, data.general_weather || '', data.related_incidents ?? 0, data.remark_related_incidents || '',
-                data.casualties ?? 0, data.remark_casualties || '', data.power_status || '', data.remark_power_status || '',
-                data.communication_lines || '', data.remark_communication_lines || '', data.damage_facilities || '',
-                data.remark_damage_facilities || '', data.work_suspension ? 'Yes' : 'No', data.remark_work_suspension || '',
-                data.assistance_provided || '', data.remark_assistance_provided || '', data.remark || '',
-                damages || '', staff || ''
-            ]);
-        });
-        const ws = XLSX.utils.aoa_to_sheet(sheetData);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, 'PSTO_Report');
-        XLSX.writeFile(wb, `DOST1_Report_${new Date().toISOString().slice(0, 19)}.xlsx`);
-        showToast('Excel report exported successfully.', 'success');
-    };
-
     const regionSummary = {
         offices: Object.keys(officesData).length,
         incidents: Object.values(officesData).reduce((sum, office) => sum + (office.related_incidents || 0), 0),
@@ -1576,15 +3181,22 @@ const Dashboard = ({ onLogout, currentUser }) => {
     const municipalitiesList = displayEvent?.municipalities || [];
 
     const officeStatusRemarks = [
-        { label: 'Incident', value: currentOfficeData.related_incidents, remark: currentOfficeData.remark_related_incidents },
-        { label: 'Casualties', value: currentOfficeData.casualties, remark: currentOfficeData.remark_casualties },
-        { label: 'Power Status', value: currentOfficeData.power_status || 'Not specified', remark: currentOfficeData.remark_power_status },
-        { label: 'Communication Lines', value: currentOfficeData.communication_lines || 'Not specified', remark: currentOfficeData.remark_communication_lines },
-        { label: 'Damage to Facilities', value: currentOfficeData.damage_facilities || 'Not specified', remark: currentOfficeData.remark_damage_facilities },
+        { label: 'Incident', value: currentOfficeData.related_incidents, remark: currentOfficeData.remark_related_incidents || '' },
+        { label: 'Casualties', value: currentOfficeData.casualties, remark: currentOfficeData.remark_casualties || '' },
+        { label: 'Power Status', value: currentOfficeData.power_status || 'Not specified', remark: currentOfficeData.remark_power_status || '' },
+        { label: 'Communication Lines', value: currentOfficeData.communication_lines || 'Not specified', remark: currentOfficeData.remark_communication_lines || '' },
+        { label: 'Damage to Facilities', value: currentOfficeData.damage_facilities || 'Not specified', remark: currentOfficeData.remark_damage_facilities || '' },
         {
             label: 'Damage Building',
             value: Array.isArray(currentOfficeData.damage_details)
                 ? `${currentOfficeData.damage_details.length} record(s)`
+                : 'Not specified',
+            remark: ''
+        },
+        {
+            label: 'Equipment Damage',
+            value: Array.isArray(currentOfficeData.equipment_details)
+                ? `${currentOfficeData.equipment_details.length} record(s)`
                 : 'Not specified',
             remark: ''
         },
@@ -1595,14 +3207,18 @@ const Dashboard = ({ onLogout, currentUser }) => {
                 : 'Not specified',
             remark: ''
         },
-        { label: 'Work Suspension', value: currentOfficeData.work_suspension ? 'Yes' : 'No', remark: currentOfficeData.remark_work_suspension },
-        { label: 'Assistance Provided', value: currentOfficeData.assistance_provided || 'Not specified', remark: currentOfficeData.remark_assistance_provided }
+        { label: 'Work Suspension', value: currentOfficeData.work_suspension ? 'Yes' : 'No', remark: currentOfficeData.remark_work_suspension || '' },
+        { label: 'Assistance Provided', value: currentOfficeData.assistance_provided || 'Not specified', remark: currentOfficeData.remark_assistance_provided || '' }
     ];
 
     const handleOfficeClick = (officeName) => {
         setSelectedOffice(officeName);
         setEditMode(false);
         setShowOfficeModal(true);
+    };
+
+    const handleCloseOfficeModal = () => {
+        setShowOfficeModal(false);
     };
 
     const handleEditToggle = () => {
@@ -1652,6 +3268,11 @@ const Dashboard = ({ onLogout, currentUser }) => {
     const handleOpenAddModal = () => {
         if (!canEditEvents) return;
         setShowAddModal(true);
+    };
+
+    const handleCloseAddModal = () => {
+        setShowAddModal(false);
+        setIsEditingEvent(false);
     };
 
     const handleViewEvent = (event) => {
@@ -1709,147 +3330,51 @@ const Dashboard = ({ onLogout, currentUser }) => {
     };
 
     // ======================== DASHBOARD CONTENT ========================
-    const DashboardContent = () => (
+    const renderDashboardContent = () => (
         <div>
-            {toast.visible && (
-                <div className={`toast-banner toast-${toast.type}`}>
-                    <span>{toast.message}</span>
-                    <button className="toast-close" onClick={() => setToast(prev => ({ ...prev, visible: false }))}>×</button>
-                </div>
-            )}
+            <ToastBanner toast={toast} setToast={setToast} />
 
-            <div className="notification-widget">
-                <button type="button" className="notification-button" onClick={() => setShowNotificationsDropdown(prev => !prev)}>
-                    🔔
-                    {unreadCount > 0 && <span className="notification-badge">{unreadCount}</span>}
-                </button>
-                {showNotificationsDropdown && (
-                    <div className="notification-dropdown">
-                        <div className="notification-dropdown-header">
-                            <span>Notifications</span>
-                            <button type="button" onClick={() => { clearAllNotifications(); setShowNotificationsDropdown(false); }}>Clear All</button>
-                        </div>
-                        {notifications.length === 0 ? (
-                            <div className="notification-empty">No notifications</div>
-                        ) : (
-                            notifications.slice(0, 6).map(notif => (
-                                <div key={notif.id} className={`notification-item ${notif.read ? 'read' : 'unread'}`}>
-                                    <div className="notification-title">{notif.title}</div>
-                                    <div className="notification-message">{notif.message}</div>
-                                    <div className="notification-time">{new Date(notif.timestamp).toLocaleString()}</div>
-                                    {!notif.read && <button type="button" onClick={() => markNotificationRead(notif.id)}>Mark read</button>}
-                                </div>
-                            ))
-                        )}
-                    </div>
-                )}
-            </div>
+            <NotificationWidget
+                unreadCount={unreadCount}
+                showNotificationsDropdown={showNotificationsDropdown}
+                setShowNotificationsDropdown={setShowNotificationsDropdown}
+                notifications={notifications}
+                clearAllNotifications={clearAllNotifications}
+                markNotificationRead={markNotificationRead}
+            />
 
-            <div className="top-info-bar">
-                <div className="top-info-item top-info-main">
-                    <span className="top-info-label">Current Event</span>
-                    <span className="top-info-value">{activeEvent ? activeEvent.name : 'No Active Typhoon'}</span>
-                </div>
-                <div className="top-info-item">
-                    <span className="top-info-label">Category</span>
-                    <span className="top-info-value">{activeEvent?.category || '—'}</span>
-                </div>
-                <div className="top-info-item">
-                    <span className="top-info-label">Alert Level</span>
-                    <span className="top-info-value">{activeEvent?.alertLevel || '—'}</span>
-                </div>
-                <div className="top-info-item">
-                    <span className="top-info-label">Live Weather</span>
-                    <span className="top-info-value">{displayWeather}</span>
-                </div>
-            </div>
+            <TopInfoBar activeEvent={activeEvent} displayWeather={displayWeather} />
 
-            <div className="info-bar">
-                <div className="info-item"><span className="info-value">Region 1</span></div>
-                <div className="info-item"><span className="info-label">Current Weather:</span><span className="info-value">{displayWeather}</span></div>
-                <div className="info-item"><span className="info-label">Active Event:</span><span className="info-value">{activeEvent ? activeEvent.name : 'None'}</span></div>
-                <div className="info-item"><span className="info-label">Total Events:</span><span className="info-value">{typhoonHistory.length}</span></div>
-            </div>
+            <InfoBar
+                displayWeather={displayWeather}
+                activeEvent={activeEvent}
+                typhoonHistory={typhoonHistory}
+            />
 
-            <div className="notification-banner">
-                <span className="notification-badge">SYSTEM NOTICE</span>
-                <span>{activeEvent ? `Active tropical cyclone ${activeEvent.name} (${activeEvent.alertLevel}) is being monitored.` : 'No active tropical cyclone at the moment. Systems are stable.'}</span>
-                <div style={{ display: 'flex', gap: '10px', marginLeft: '16px', flexWrap: 'wrap' }}>
-                    <button className="secondary-btn" onClick={handleGenerateReport}>📄 Generate Report</button>
-                    <button className="secondary-btn" onClick={handleDownloadDoc}>📥 Download DOC</button>
-                    <button className="secondary-btn" onClick={handleExportExcel}>📊 Export Excel</button>
-                </div>
-            </div>
+            <NotificationBanner
+                activeEvent={activeEvent}
+                handleGenerateReport={handleGenerateReport}
+                handleDownloadDoc={handleDownloadDoc}
+                handleExportExcel={handleExportExcel}
+            />
 
-            <div className="psto-selector-section">
-                <div className="psto-section-header"><h2>{isUser && currentUser?.office ? '🏢 Your PSTO Office' : '🏢 Select PSTO Office'}</h2></div>
-                <div className="psto-selector-grid">
-                    {isUser && currentUser?.office ? (
-                        <div
-                            className={`psto-selector-card active ${officesData[currentUser.office]?.imageUrl ? 'has-image' : ''}`}
-                            data-office={currentUser.office}
-                            style={officesData[currentUser.office]?.imageUrl ? { backgroundImage: `url(${officesData[currentUser.office].imageUrl})` } : {}}
-                            onClick={() => handleOfficeClick(currentUser.office)}
-                        >
-                            <div className="psto-selector-overlay">
-                                <div className="psto-selector-name">{currentUser.office}</div>
-                                <div className="psto-selector-stats">
-                                    <span>📊 {officesData[currentUser.office]?.related_incidents ?? 0}</span>
-                                    <span>⚠️ {officesData[currentUser.office]?.casualties ?? 0}</span>
-                                    <span>🏗️ {(officesData[currentUser.office]?.damage_details || []).length}</span>
-                                    <span>👥 {(officesData[currentUser.office]?.affected_staff || []).length}</span>
-                                </div>
-                            </div>
-                        </div>
-                    ) : (
-                        <>
-                            <div
-                                className={`psto-selector-card ${selectedOffice === 'PSTO-Region-1' ? 'active' : ''}`}
-                                data-office="PSTO-Region-1"
-                                onClick={() => handleOfficeClick('PSTO-Region-1')}
-                            >
-                                <div className="psto-selector-overlay">
-                                    <div className="psto-selector-name">PSTO Region 1</div>
-                                    <div className="psto-selector-stats">
-                                        <span>📊 {regionSummary.incidents}</span>
-                                        <span>⚠️ {regionSummary.casualties}</span>
-                                        <span>🏗️ {regionSummary.damageDetails}</span>
-                                        <span>👥 {regionSummary.affectedStaff}</span>
-                                    </div>
-                                </div>
-                            </div>
-                            {Object.keys(officesData).map(office => (
-                                <div
-                                    key={office}
-                                    className={`psto-selector-card ${selectedOffice === office ? 'active' : ''} ${officesData[office]?.imageUrl ? 'has-image' : ''}`}
-                                    data-office={office}
-                                    style={officesData[office]?.imageUrl ? { backgroundImage: `url(${officesData[office].imageUrl})` } : {}}
-                                    onClick={() => handleOfficeClick(office)}
-                                >
-                                    <div className="psto-selector-overlay">
-                                        <div className="psto-selector-name">{office}</div>
-                                        <div className="psto-selector-stats">
-                                            <span>📊 {officesData[office].related_incidents}</span>
-                                            <span>⚠️ {officesData[office].casualties}</span>
-                                            <span>🏗️ {(officesData[office].damage_details || []).length}</span>
-                                            <span>👥 {(officesData[office].affected_staff || []).length}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </>
-                    )}
-                </div>
-            </div>
+            <PSTOSelector
+                isUser={isUser}
+                currentUser={currentUser}
+                officesData={officesData}
+                selectedOffice={selectedOffice}
+                regionSummary={regionSummary}
+                handleOfficeClick={handleOfficeClick}
+            />
 
-            <div className="edit-controls-bar">
-                <div><strong>Current PSTO:</strong> {selectedOffice}</div>
-                <div className="edit-buttons">
-                    {!isUser && selectedOffice !== 'PSTO-Region-1' && <button onClick={handleEditToggle}>{editMode ? 'Cancel' : '✏️ Edit PSTO Data'}</button>}
-                    {isUser && <button className="success" onClick={openReportModal}>📤 Submit Report</button>}
-                    {editMode && <button className="success" onClick={handleSave}>💾 Save Changes</button>}
-                </div>
-            </div>
+            <EditControlsBar
+                selectedOffice={selectedOffice}
+                isUser={isUser}
+                editMode={editMode}
+                handleEditToggle={handleEditToggle}
+                openReportModal={openReportModal}
+                handleSave={handleSave}
+            />
 
             <div className="main-grid">
                 <div className="card warning-card">
@@ -2257,683 +3782,14 @@ const Dashboard = ({ onLogout, currentUser }) => {
                 </div>
             </div>
 
-            {showOfficeModal && selectedOffice && (
-                <div className="modal-overlay" onClick={() => setShowOfficeModal(false)}>
-                    <div className="modal-content event-details-modal" onClick={(e) => e.stopPropagation()}>
-                        <div className="details-header"><div className="details-title">{selectedOffice} Summary</div><button className="modal-close" onClick={() => setShowOfficeModal(false)}>×</button></div>
-                        <div className="detail-section"><div className="detail-section-title">Office Overview</div><div className="summary-panel"><p><strong>General Weather:</strong> {displayWeather}</p></div></div>
-                        <div className="detail-section"><div className="detail-section-title">Quick Summary</div><div className="summary-grid">
-                            <div className="summary-card"><span className="summary-card-label">Damage Building</span><span className="summary-card-value">{Array.isArray(currentOfficeData.damage_details) ? currentOfficeData.damage_details.length : '0'} record(s)</span></div>
-                            <div className="summary-card"><span className="summary-card-label">Affected Staff</span><span className="summary-card-value">{Array.isArray(currentOfficeData.affected_staff) ? currentOfficeData.affected_staff.length : '0'} record(s)</span></div>
-                        </div></div>
-                        <div className="detail-section"><div className="detail-section-title">Damage Building</div><div className="summary-panel">
-                            {Array.isArray(currentOfficeData.damage_details) && currentOfficeData.damage_details.length > 0 ? (
-                                <div className="summary-list">
-                                    {currentOfficeData.damage_details.map((damage, idx) => (
-                                        <div key={damage.id || idx} className="summary-list-item">
-                                            <span className="summary-list-title">{damage.description || 'No description'}</span>
-                                            <span>Cost: ₱{damage.cost || 0}</span>
-                                            <span>Status: {damage.status || 'Reported'}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <p>No damage records reported.</p>
-                            )}
-                        </div></div>
-                        <div className="detail-section"><div className="detail-section-title">Affected Staff</div><div className="summary-panel">
-                            {Array.isArray(currentOfficeData.affected_staff) && currentOfficeData.affected_staff.length > 0 ? (
-                                <div className="summary-list">
-                                    {currentOfficeData.affected_staff.map((staff, idx) => (
-                                        <div key={staff.id || idx} className="summary-list-item">
-                                            <span className="summary-list-title">{staff.name || 'Unknown staff'}</span>
-                                            <span>Area: {staff.area || 'Not specified'}</span>
-                                            <span>Assistance: {staff.assistance || 'None'}</span>
-                                            <span>Status: {staff.status || 'Active'}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <p>No affected staff reported.</p>
-                            )}
-                        </div></div>
-                        <div className="detail-section"><div className="detail-section-title">Updated Remarks</div><div className="summary-panel">
-                            {officeStatusRemarks.length > 0 ? (
-                                officeStatusRemarks.map((item) => (
-                                    <div key={item.label} className="status-remark-row">
-                                        <span className="status-remark-label">{item.label}:</span>
-                                        <span className="status-remark-value">{item.value}</span>
-                                        <span className="status-remark-text">{item.remark || 'No remarks'}</span>
-                                    </div>
-                                ))
-                            ) : (
-                                <p>No remarks provided.</p>
-                            )}
-                        </div></div>
-                        {currentOfficeData.municipalities && currentOfficeData.municipalities.length > 0 && (
-                            <div className="detail-section"><div className="detail-section-title">Municipalities</div><div className="scope-tags">{currentOfficeData.municipalities.map((mun) => <span key={mun} className="scope-tag">{mun}</span>)}</div></div>
-                        )}
-                        <div className="modal-buttons"><button onClick={() => setShowOfficeModal(false)}>Close</button></div>
-                    </div>
-                </div>
-            )}
-        </div>
-    );
-
-    // ======================== ADD/EDIT EVENT MODAL ========================
-    const AddEventModal = () => (
-        <div className="modal-overlay" onClick={() => { setShowAddModal(false); setIsEditingEvent(false); }}>
-            <div className="modal-content large-modal" onClick={e => e.stopPropagation()}>
-                <div className="modal-header">
-                    <h3>{isEditingEvent ? '✏️ Edit Event' : '🌪️ Add New Event'}</h3>
-                    <button
-                        type="button"
-                        className="modal-close"
-                        onClick={() => { setShowAddModal(false); setIsEditingEvent(false); }}
-                    >
-                        ×
-                    </button>
-                </div>
-                <form onSubmit={(e) => { e.preventDefault(); handleAddEvent(); }} className="event-form">
-                    <div className="form-row">
-                        <div className="form-group">
-                            <label>Event Name *</label>
-                            <input
-                                type="text"
-                                name="name"
-                                value={newEvent.name}
-                                onChange={(e) => handleNewEventFieldChange('name', e.target.value)}
-                                required
-                                placeholder="e.g., Typhoon Kristine"
-                                className="form-input"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="form-row">
-                        <div className="form-group">
-                            <label>Alert Level</label>
-                            <select
-                                name="alertLevel"
-                                value={newEvent.alertLevel}
-                                onChange={(e) => handleNewEventFieldChange('alertLevel', e.target.value)}
-                                className="form-select"
-                            >
-                                <option value="">-- Select --</option>
-                                <option value="RED">🔴 RED</option>
-                                <option value="BLUE">🔵 BLUE</option>
-                                <option value="WHITE">⚪ WHITE</option>
-                            </select>
-                        </div>
-                        <div className="form-group">
-                            <label>Category</label>
-                            <select
-                                name="category"
-                                value={newEvent.category}
-                                onChange={(e) => handleNewEventFieldChange('category', e.target.value)}
-                                className="form-select"
-                            >
-                                <option value="">-- Select --</option>
-                                <option value="Super Typhoon">🌪️ Super Typhoon</option>
-                                <option value="Typhoon">🌀 Typhoon</option>
-                                <option value="Severe Tropical Storm">🌧️ Severe Tropical Storm</option>
-                                <option value="Tropical Storm">🌧️ Tropical Storm</option>
-                                <option value="Tropical Depression">☁️ Tropical Depression</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div className="datetime-row">
-                        <div className="datetime-group">
-                            <label>Start Date/Time</label>
-                            <input
-                                type="datetime-local"
-                                name="startDateTime"
-                                value={newEvent.startDateTime}
-                                onChange={(e) => handleNewEventFieldChange('startDateTime', e.target.value)}
-                                className="form-input"
-                            />
-                        </div>
-                        <div className="datetime-group">
-                            <label>End Date/Time</label>
-                            <input
-                                type="datetime-local"
-                                name="endDateTime"
-                                value={newEvent.endDateTime}
-                                onChange={(e) => handleNewEventFieldChange('endDateTime', e.target.value)}
-                                className="form-input"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="form-row">
-                        <div className="form-group">
-                            <label>Track Positions</label>
-                            <input
-                                type="text"
-                                name="trackPositions"
-                                value={newEvent.trackPositions}
-                                onChange={(e) => handleNewEventFieldChange('trackPositions', e.target.value)}
-                                placeholder="e.g., 13.0N 121.2E → 13.8N 122.1E"
-                                className="form-input"
-                            />
-                        </div>
-                        <div className="form-group">
-                            <label>Intensity</label>
-                            <input
-                                type="text"
-                                name="intensity"
-                                value={newEvent.intensity}
-                                onChange={(e) => handleNewEventFieldChange('intensity', e.target.value)}
-                                placeholder="e.g., 95 kph / 52 kt"
-                                className="form-input"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="form-row">
-                        <div className="form-group">
-                            <label>🌤️ General Weather</label>
-                            <input
-                                type="text"
-                                name="general_weather"
-                                value={newEvent.general_weather}
-                                onChange={(e) => handleNewEventFieldChange('general_weather', e.target.value)}
-                                placeholder="e.g., Rainy with strong winds"
-                                className="form-input"
-                            />
-                        </div>
-                        <div className="form-group">
-                            <label>Report Link</label>
-                            <input
-                                type="url"
-                                name="reportLink"
-                                value={newEvent.reportLink}
-                                onChange={(e) => handleNewEventFieldChange('reportLink', e.target.value)}
-                                placeholder="https://..."
-                                className="form-input"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="form-section">
-                        <h4 className="form-section-title">📊 Damage & Impact</h4>
-                        <div className="form-row">
-                            <div className="form-group">
-                                <label>Related Incidents</label>
-                                <input
-                                    type="number"
-                                    name="related_incidents"
-                                    value={newEvent.related_incidents}
-                                    placeholder="0"
-                                    onChange={(e) => {
-                                        const value = e.target.value;
-                                        handleNewEventFieldChange('related_incidents', value === '' ? '' : parseInt(value, 10));
-                                    }}
-                                    className="form-input"
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label>Incident Remarks</label>
-                                <input
-                                    type="text"
-                                    name="remark_related_incidents"
-                                    value={newEvent.remark_related_incidents}
-                                    placeholder="Remarks..."
-                                    onChange={(e) => handleNewEventFieldChange('remark_related_incidents', e.target.value)}
-                                    className="form-input"
-                                />
-                            </div>
-                        </div>
-                        <div className="form-row">
-                            <div className="form-group">
-                                <label>Casualties</label>
-                                <input
-                                    type="number"
-                                    name="casualties"
-                                    value={newEvent.casualties}
-                                    placeholder="0"
-                                    onChange={(e) => {
-                                        const value = e.target.value;
-                                        handleNewEventFieldChange('casualties', value === '' ? '' : parseInt(value, 10));
-                                    }}
-                                    className="form-input"
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label>Casualty Remarks</label>
-                                <input
-                                    type="text"
-                                    name="remark_casualties"
-                                    value={newEvent.remark_casualties}
-                                    placeholder="Remarks..."
-                                    onChange={(e) => handleNewEventFieldChange('remark_casualties', e.target.value)}
-                                    className="form-input"
-                                />
-                            </div>
-                        </div>
-                        <div className="form-row">
-                            <div className="form-group">
-                                <label>Power Status</label>
-                                <input
-                                    type="text"
-                                    name="power_status"
-                                    value={newEvent.power_status}
-                                    placeholder="e.g., On, Off, Intermittent"
-                                    onChange={(e) => handleNewEventFieldChange('power_status', e.target.value)}
-                                    className="form-input"
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label>Power Remarks</label>
-                                <input
-                                    type="text"
-                                    name="remark_power_status"
-                                    value={newEvent.remark_power_status}
-                                    placeholder="Remarks..."
-                                    onChange={(e) => handleNewEventFieldChange('remark_power_status', e.target.value)}
-                                    className="form-input"
-                                />
-                            </div>
-                        </div>
-                        <div className="form-row">
-                            <div className="form-group">
-                                <label>Communication Lines</label>
-                                <input
-                                    type="text"
-                                    name="communication_lines"
-                                    value={newEvent.communication_lines}
-                                    placeholder="e.g., Working, Down"
-                                    onChange={(e) => handleNewEventFieldChange('communication_lines', e.target.value)}
-                                    className="form-input"
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label>Communication Remarks</label>
-                                <input
-                                    type="text"
-                                    name="remark_communication_lines"
-                                    value={newEvent.remark_communication_lines}
-                                    placeholder="Remarks..."
-                                    onChange={(e) => handleNewEventFieldChange('remark_communication_lines', e.target.value)}
-                                    className="form-input"
-                                />
-                            </div>
-                        </div>
-                        <div className="form-row">
-                            <div className="form-group">
-                                <label>Damage to Facilities</label>
-                                <input
-                                    type="text"
-                                    name="damage_facilities"
-                                    value={newEvent.damage_facilities}
-                                    placeholder="e.g., Minor, Major"
-                                    onChange={(e) => handleNewEventFieldChange('damage_facilities', e.target.value)}
-                                    className="form-input"
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label>Damage Remarks</label>
-                                <input
-                                    type="text"
-                                    name="remark_damage_facilities"
-                                    value={newEvent.remark_damage_facilities}
-                                    placeholder="Remarks..."
-                                    onChange={(e) => handleNewEventFieldChange('remark_damage_facilities', e.target.value)}
-                                    className="form-input"
-                                />
-                            </div>
-                        </div>
-                        <div className="form-row">
-                            <div className="form-group checkbox-group">
-                                <label>
-                                    <input
-                                        type="checkbox"
-                                        name="work_suspension"
-                                        checked={newEvent.work_suspension}
-                                        onChange={(e) => handleNewEventFieldChange('work_suspension', e.target.checked)}
-                                    />
-                                    Work Suspension
-                                </label>
-                            </div>
-                            <div className="form-group">
-                                <label>Work Suspension Remarks</label>
-                                <input
-                                    type="text"
-                                    name="remark_work_suspension"
-                                    value={newEvent.remark_work_suspension}
-                                    placeholder="Remarks..."
-                                    onChange={(e) => handleNewEventFieldChange('remark_work_suspension', e.target.value)}
-                                    className="form-input"
-                                />
-                            </div>
-                        </div>
-                        <div className="form-row">
-                            <div className="form-group">
-                                <label>Assistance Provided</label>
-                                <input
-                                    type="text"
-                                    name="assistance_provided"
-                                    value={newEvent.assistance_provided}
-                                    placeholder="e.g., Relief, Evacuation"
-                                    onChange={(e) => handleNewEventFieldChange('assistance_provided', e.target.value)}
-                                    className="form-input"
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label>Assistance Remarks</label>
-                                <input
-                                    type="text"
-                                    name="remark_assistance_provided"
-                                    value={newEvent.remark_assistance_provided}
-                                    placeholder="Remarks..."
-                                    onChange={(e) => handleNewEventFieldChange('remark_assistance_provided', e.target.value)}
-                                    className="form-input"
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="form-group">
-                        <label>Affected Areas</label>
-                        <div className="scope-grid">
-                            {allProvinces.map(p => {
-                                const selected = newEvent.provinces.includes(p);
-                                return (
-                                    <button
-                                        type="button"
-                                        key={p}
-                                        className={`scope-item ${selected ? 'selected' : ''}`}
-                                        onClick={() => {
-                                            setNewEvent(prev => {
-                                                const provinces = selected ? prev.provinces.filter(x => x !== p) : [...prev.provinces, p];
-                                                return {
-                                                    ...prev,
-                                                    provinces,
-                                                    sendToAllUsers: provinces.length === allProvinces.length
-                                                };
-                                            });
-                                        }}
-                                    >
-                                        {p}
-                                    </button>
-                                );
-                            })}
-                        </div>
-                        <label className="checkbox-group">
-                            <input
-                                type="checkbox"
-                                name="sendToAllUsers"
-                                checked={newEvent.sendToAllUsers}
-                                onChange={(e) => {
-                                    const checked = e.target.checked;
-                                    setNewEvent(prev => ({
-                                        ...prev,
-                                        sendToAllUsers: checked,
-                                        provinces: checked ? allProvinces : prev.provinces
-                                    }));
-                                }}
-                            />
-                            Send to all offices
-                        </label>
-                    </div>
-
-                    <div className="form-group">
-                        <label>Event Image</label>
-                        <input
-                            type="file"
-                            accept="image/*"
-                            onChange={(e) => {
-                                const file = e.target.files[0];
-                                if (file) {
-                                    const reader = new FileReader();
-                                    reader.onload = () => handleNewEventFieldChange('imageUrl', reader.result);
-                                    reader.readAsDataURL(file);
-                                }
-                            }}
-                            className="form-input"
-                        />
-                        {newEvent.imageUrl && (
-                            <div className="image-preview-container">
-                                <img src={newEvent.imageUrl} alt="Preview" className="event-image-preview" />
-                                <button
-                                    type="button"
-                                    className="remove-image-btn"
-                                    onClick={() => handleNewEventFieldChange('imageUrl', '')}
-                                >
-                                    ✕ Remove
-                                </button>
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="modal-buttons">
-                        <button type="submit" className="success">
-                            {isEditingEvent ? '💾 Save Changes' : '🌪️ Create Event'}
-                        </button>
-                        <button type="button" onClick={() => { setShowAddModal(false); setIsEditingEvent(false); }}>
-                            Cancel
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    );
-
-    // ======================== EVENT DETAILS MODAL ========================
-    const EventDetailsModal = () => {
-        if (!selectedEvent) return null;
-        return (
-            <div className="modal-overlay" onClick={handleCloseDetailsModal}>
-                <div className="modal-content event-details-modal" onClick={e => e.stopPropagation()}>
-                    <div className="details-header">
-                        <div className="details-title">{selectedEvent.name}</div>
-                        <button className="modal-close" onClick={handleCloseDetailsModal}>×</button>
-                    </div>
-                    <div className="detail-section">
-                        <div className="detail-section-title">📋 TROPICAL CYCLONE PRELIMINARY REPORT</div>
-                        <div className="report-panel">
-                            {isEditingReportLink ? (
-                                <div className="report-edit-group">
-                                    <input
-                                        type="url"
-                                        value={reportLinkInput}
-                                        onChange={(e) => setReportLinkInput(e.target.value)}
-                                        placeholder="Enter report URL..."
-                                    />
-                                    <button className="success" onClick={handleSaveReportLink}>Save</button>
-                                    <button onClick={() => setIsEditingReportLink(false)}>Cancel</button>
-                                </div>
-                            ) : (
-                                <div className="report-display-group">
-                                    {selectedEvent.reportLink ?
-                                        <a href={selectedEvent.reportLink} target="_blank" rel="noopener noreferrer">📄 View Report</a> :
-                                        <span>No report link</span>
-                                    }
-                                    {canEditEvents && (
-                                        <button className="edit-link-btn" onClick={() => {
-                                            setReportLinkInput(selectedEvent.reportLink || '');
-                                            setIsEditingReportLink(true);
-                                        }}>
-                                            ✏️ Add/Edit Link
-                                        </button>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                    <div className="details-grid">
-                        <div className="detail-box">
-                            <div className="detail-label">Category</div>
-                            <div className="detail-value">{selectedEvent.category || selectedEvent.type || '—'}</div>
-                        </div>
-                        <div className="detail-box">
-                            <div className="detail-label">Alert Level</div>
-                            <div className="detail-value">
-                                <span className="alert-badge" style={{ background: getAlertColor(selectedEvent.alertLevel) }}>
-                                    {selectedEvent.alertLevel || '—'}
-                                </span>
-                            </div>
-                        </div>
-                        <div className="detail-box">
-                            <div className="detail-label">Start Date</div>
-                            <div className="detail-value">{selectedEvent.startDateTime ? new Date(selectedEvent.startDateTime).toLocaleString() : selectedEvent.date || '—'}</div>
-                        </div>
-                        <div className="detail-box">
-                            <div className="detail-label">End Date</div>
-                            <div className="detail-value">{selectedEvent.endDateTime ? new Date(selectedEvent.endDateTime).toLocaleString() : 'Ongoing'}</div>
-                        </div>
-                    </div>
-                    <div className="detail-section">
-                        <div className="detail-section-title">📍 Deployment Scope</div>
-                        <div className="scope-tags">
-                            {selectedEvent.provinces?.map((p, i) => (
-                                <span key={i} className="scope-tag">{p}</span>
-                            ))}
-                        </div>
-                    </div>
-                    <div className="detail-section">
-                        <div className="detail-section-title">🎯 Track & Intensity</div>
-                        <div className="summary-panel">
-                            <p><strong>Positions:</strong> {selectedEvent.trackPositions || 'Not specified'}</p>
-                            <p><strong>Intensity:</strong> {selectedEvent.intensity || 'Not specified'}</p>
-                        </div>
-                    </div>
-                    {selectedEvent.imageUrl && (
-                        <div className="detail-section">
-                            <img src={selectedEvent.imageUrl} alt="Event" className="event-image-preview" onClick={() => openImageModal(selectedEvent.imageUrl)} />
-                        </div>
-                    )}
-                    {(selectedEvent.casualties || selectedEvent.power_status || selectedEvent.communication_lines || selectedEvent.damage_facilities || selectedEvent.assistance_provided || selectedEvent.related_incidents) && (
-                        <div className="detail-section">
-                            <div className="detail-section-title">💔 Damage Effects</div>
-                            <div className="damage-summary-grid">
-                                {selectedEvent.related_incidents > 0 && (
-                                    <div className="damage-item">
-                                        <span className="damage-label">Related Incidents</span>
-                                        <span className="damage-value">{selectedEvent.related_incidents}</span>
-                                        {selectedEvent.remark_related_incidents && <span className="damage-remark">{selectedEvent.remark_related_incidents}</span>}
-                                    </div>
-                                )}
-                                {selectedEvent.casualties > 0 && (
-                                    <div className="damage-item">
-                                        <span className="damage-label">Casualties</span>
-                                        <span className="damage-value">{selectedEvent.casualties}</span>
-                                        {selectedEvent.remark_casualties && <span className="damage-remark">{selectedEvent.remark_casualties}</span>}
-                                    </div>
-                                )}
-                                {selectedEvent.power_status && (
-                                    <div className="damage-item">
-                                        <span className="damage-label">Power Status</span>
-                                        <span className="damage-value">{selectedEvent.power_status}</span>
-                                        {selectedEvent.remark_power_status && <span className="damage-remark">{selectedEvent.remark_power_status}</span>}
-                                    </div>
-                                )}
-                                {selectedEvent.communication_lines && (
-                                    <div className="damage-item">
-                                        <span className="damage-label">Communication Lines</span>
-                                        <span className="damage-value">{selectedEvent.communication_lines}</span>
-                                        {selectedEvent.remark_communication_lines && <span className="damage-remark">{selectedEvent.remark_communication_lines}</span>}
-                                    </div>
-                                )}
-                                {selectedEvent.damage_facilities && (
-                                    <div className="damage-item">
-                                        <span className="damage-label">Damage to Facilities</span>
-                                        <span className="damage-value">{selectedEvent.damage_facilities}</span>
-                                        {selectedEvent.remark_damage_facilities && <span className="damage-remark">{selectedEvent.remark_damage_facilities}</span>}
-                                    </div>
-                                )}
-                                {selectedEvent.assistance_provided && (
-                                    <div className="damage-item">
-                                        <span className="damage-label">Assistance Provided</span>
-                                        <span className="damage-value">{selectedEvent.assistance_provided}</span>
-                                        {selectedEvent.remark_assistance_provided && <span className="damage-remark">{selectedEvent.remark_assistance_provided}</span>}
-                                    </div>
-                                )}
-                                {selectedEvent.work_suspension && (
-                                    <div className="damage-item">
-                                        <span className="damage-label">Work Suspension</span>
-                                        <span className="damage-value">✓ Yes</span>
-                                        {selectedEvent.remark_work_suspension && <span className="damage-remark">{selectedEvent.remark_work_suspension}</span>}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    )}
-                    {selectedEvent.rejectionReason && (
-                        <div className="rejection-reason">
-                            <strong>Rejection reason:</strong> {selectedEvent.rejectionReason}
-                        </div>
-                    )}
-                    <div className="modal-buttons details-actions">
-                        {canEditEvents && (
-                            <>
-                                <button className="danger" onClick={() => handleDeleteEvent(selectedEvent.id)}>🗑️ Delete</button>
-                                <button className="success" onClick={() => handleEditEvent(selectedEvent)}>✏️ Edit</button>
-                            </>
-                        )}
-                        <button onClick={handleCloseDetailsModal}>Close</button>
-                    </div>
-                </div>
-            </div>
-        );
-    };
-
-    // ======================== TYPHOON HISTORY ========================
-    const TyphoonHistoryContent = () => (
-        <div className="events-management">
-            <div className="events-header">
-                <h1>📜 Typhoon History</h1>
-                <div className="header-actions">
-                    <div className="search-box-enhanced">
-                        <span className="search-icon">🔍</span>
-                        <input
-                            type="text"
-                            placeholder="Search history..."
-                            value={searchTerm}
-                            onChange={handleSearchChange}
-                            className="search-input-enhanced"
-                        />
-                        {searchTerm && (
-                            <button className="search-clear" onClick={() => setSearchTerm('')}>✕</button>
-                        )}
-                    </div>
-                </div>
-            </div>
-            <div className="events-subtitle">Complete history of all typhoons and tropical cyclones</div>
-            <div className="events-table-container">
-                <table className="events-table">
-                    <thead>
-                        <tr>
-                            <th>Event Name</th>
-                            <th>Category</th>
-                            <th>Alert Level</th>
-                            <th>Date</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {typhoonHistory.length > 0 ? typhoonHistory.map(event => (
-                            <tr
-                                key={event.id}
-                                onClick={() => {
-                                    setSelectedEvent(event);
-                                    setShowDetailsModal(true);
-                                }}
-                                className="history-row-clickable"
-                            >
-                                <td className="event-name">{event.name}</td>
-                                <td>{event.category || '—'}</td>
-                                <td><span className="alert-badge" style={{ background: getAlertColor(event.alertLevel) }}>{event.alertLevel}</span></td>
-                                <td>{event.date}</td>
-                                <td><span className="status-badge" style={{ background: '#6c757d' }}>Archived</span></td>
-                            </tr>
-                        )) : (
-                            <tr><td colSpan="5" style={{ textAlign: 'center', padding: '40px' }}>No typhoon history available.</td></tr>
-                        )}
-                    </tbody>
-                </table>
-            </div>
+            <OfficeModal
+                isOpen={showOfficeModal}
+                onClose={handleCloseOfficeModal}
+                selectedOffice={selectedOffice}
+                displayWeather={displayWeather}
+                currentOfficeData={currentOfficeData}
+                officeStatusRemarks={officeStatusRemarks}
+            />
         </div>
     );
 
@@ -2941,29 +3797,62 @@ const Dashboard = ({ onLogout, currentUser }) => {
     return (
         <div className={`dashboard-container ${settingsData.darkMode ? 'dark-mode' : ''}`}>
             <div className="sidebar-new">
-                <div className="sidebar-logo"><h2>DOST Region 1</h2><p>Disaster Management</p></div>
+                <div className="sidebar-logo">
+                    <h2>DOST Region 1</h2>
+                    <p>Disaster Management</p>
+                </div>
                 <nav className="sidebar-nav">
-                    <div className={`nav-item ${activeMenu === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveMenu('dashboard')}><span className="nav-icon">📊</span><span>Dashboard</span></div>
-                    <div className={`nav-item ${activeMenu === 'typhoon' ? 'active' : ''}`} onClick={() => setActiveMenu('typhoon')}><span className="nav-icon">🌊</span><span>Typhoon</span></div>
-                    <div className={`nav-item ${activeMenu === 'history' ? 'active' : ''}`} onClick={() => setActiveMenu('history')}><span className="nav-icon">📜</span><span>History</span></div>
-                    <div className={`nav-item ${activeMenu === 'live-typhoon' ? 'active' : ''}`} onClick={() => setActiveMenu('live-typhoon')}><span className="nav-icon">🗺️</span><span>Live Typhoon (Panahon)</span></div>
-                    <div className={`nav-item ${activeMenu === 'notifications' ? 'active' : ''}`} onClick={() => setActiveMenu('notifications')}><span className="nav-icon">🔔</span><span>Notifications {unreadCount > 0 && `(${unreadCount})`}</span></div>
-                    {canApproveReports && <div className={`nav-item ${activeMenu === 'pending-reports' ? 'active' : ''}`} onClick={() => setActiveMenu('pending-reports')}><span className="nav-icon">📋</span><span>Pending Reports</span></div>}
-                    {canManageUsers && <div className={`nav-item ${activeMenu === 'users' ? 'active' : ''}`} onClick={() => setActiveMenu('users')}><span className="nav-icon">👥</span><span>Users</span></div>}
+                    <div className={`nav-item ${activeMenu === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveMenu('dashboard')}>
+                        <span className="nav-icon">📊</span>
+                        <span>Dashboard</span>
+                    </div>
+                    <div className={`nav-item ${activeMenu === 'typhoon' ? 'active' : ''}`} onClick={() => setActiveMenu('typhoon')}>
+                        <span className="nav-icon">🌊</span>
+                        <span>Typhoon</span>
+                    </div>
+                    <div className={`nav-item ${activeMenu === 'history' ? 'active' : ''}`} onClick={() => setActiveMenu('history')}>
+                        <span className="nav-icon">📜</span>
+                        <span>History</span>
+                    </div>
+                    <div className={`nav-item ${activeMenu === 'live-typhoon' ? 'active' : ''}`} onClick={() => setActiveMenu('live-typhoon')}>
+                        <span className="nav-icon">🗺️</span>
+                        <span>Live Typhoon (Panahon)</span>
+                    </div>
+                    <div className={`nav-item ${activeMenu === 'notifications' ? 'active' : ''}`} onClick={() => setActiveMenu('notifications')}>
+                        <span className="nav-icon">🔔</span>
+                        <span>Notifications {unreadCount > 0 && `(${unreadCount})`}</span>
+                    </div>
+                    {canApproveReports && (
+                        <div className={`nav-item ${activeMenu === 'pending-reports' ? 'active' : ''}`} onClick={() => setActiveMenu('pending-reports')}>
+                            <span className="nav-icon">📋</span>
+                            <span>Pending Reports</span>
+                        </div>
+                    )}
+                    {canManageUsers && (
+                        <div className={`nav-item ${activeMenu === 'users' ? 'active' : ''}`} onClick={() => setActiveMenu('users')}>
+                            <span className="nav-icon">👥</span>
+                            <span>Users</span>
+                        </div>
+                    )}
                 </nav>
                 <div className="sidebar-footer">
-                    <div className="user-info"><div className="user-greeting">Hello, {currentUser?.name || 'Admin'}</div><div className="user-role">{isSuperAdmin ? 'SUPER ADMIN' : (isAdmin ? 'ADMIN' : 'USER')}</div></div>
+                    <div className="user-info">
+                        <div className="user-greeting">Hello, {currentUser?.name || 'Admin'}</div>
+                        <div className="user-role">{isSuperAdmin ? 'SUPER ADMIN' : (isAdmin ? 'ADMIN' : 'USER')}</div>
+                    </div>
                     <div className="sidebar-settings">
                         <div className="settings-item" onClick={() => setShowSettingsModal(true)}>
                             <span className="settings-icon">⚙️</span>
                             <span>Settings</span>
                         </div>
                     </div>
-                    <div className="user-actions"><div className="action-item logout" onClick={onLogout}>🚪 Logout</div></div>
+                    <div className="user-actions">
+                        <div className="action-item logout" onClick={onLogout}>🚪 Logout</div>
+                    </div>
                 </div>
             </div>
             <div className="main-content" ref={mainContentRef} onScroll={handleScroll}>
-                {activeMenu === 'dashboard' && <DashboardContent />}
+                {activeMenu === 'dashboard' && renderDashboardContent()}
                 {activeMenu === 'typhoon' && (
                     <div className="events-management">
                         <div className="events-header">
@@ -2983,8 +3872,8 @@ const Dashboard = ({ onLogout, currentUser }) => {
                                         <button className="search-clear" onClick={() => setSearchTerm('')}>✕</button>
                                     )}
                                 </div>
-                                {(isUser || canEditEvents) && (
-                                    <button className="new-event-btn" onClick={openReportModal}>
+                                {(canEditEvents) && (
+                                    <button className="new-event-btn" onClick={handleOpenAddModal}>
                                         ➕ Add New Event
                                     </button>
                                 )}
@@ -3025,14 +3914,24 @@ const Dashboard = ({ onLogout, currentUser }) => {
                                             </td>
                                         </tr>
                                     )) : (
-                                        <tr><td colSpan="7" style={{ textAlign: 'center', padding: '40px' }}>No events found. {isUser && 'Click "➕ Add New Event" to add a new event.'}</td></tr>
+                                        <tr><td colSpan="7" style={{ textAlign: 'center', padding: '40px' }}>No events found. {canEditEvents && 'Click "➕ Add New Event" to add a new event.'}</td></tr>
                                     )}
                                 </tbody>
                             </table>
                         </div>
                     </div>
                 )}
-                {activeMenu === 'history' && <TyphoonHistoryContent />}
+                {activeMenu === 'history' && (
+                    <TyphoonHistoryContent
+                        typhoonHistory={typhoonHistory}
+                        searchTerm={searchTerm}
+                        setSearchTerm={setSearchTerm}
+                        handleSearchChange={handleSearchChange}
+                        setSelectedEvent={setSelectedEvent}
+                        setShowDetailsModal={setShowDetailsModal}
+                        getAlertColor={getAlertColor}
+                    />
+                )}
                 {activeMenu === 'live-typhoon' && (
                     <div className="forecast-section card">
                         <h1>Live Typhoon (Panahon)</h1>
@@ -3154,268 +4053,35 @@ const Dashboard = ({ onLogout, currentUser }) => {
                     </div>
                 )}
             </div>
-            {showDetailsModal && <EventDetailsModal />}
-            {showReportModal && (
-                <div className="modal-overlay" onClick={() => setShowReportModal(false)}>
-                    <div className="modal-content large-modal" onClick={e => e.stopPropagation()}>
-                        <div className="modal-header"><h3>➕ Add New Event</h3><button className="modal-close" onClick={() => setShowReportModal(false)}>×</button></div>
-                        <form className="event-form" onSubmit={(e) => { e.preventDefault(); handleAddEvent(); }}>
-                            <div className="form-row">
-                                <div className="form-group">
-                                    <label>Event Name *</label>
-                                    <input
-                                        type="text"
-                                        value={newEvent.name}
-                                        onChange={(e) => handleNewEventFieldChange('name', e.target.value)}
-                                        required
-                                        placeholder="Typhoon name"
-                                    />
-                                </div>
-                            </div>
-                            <div className="form-row">
-                                <div className="form-group">
-                                    <label>Alert Level</label>
-                                    <select value={newEvent.alertLevel} onChange={(e) => handleNewEventFieldChange('alertLevel', e.target.value)}>
-                                        <option value="">-- Select --</option>
-                                        <option value="RED">🔴 RED</option>
-                                        <option value="BLUE">🔵 BLUE</option>
-                                        <option value="WHITE">⚪ WHITE</option>
-                                    </select>
-                                </div>
-                                <div className="form-group">
-                                    <label>Category</label>
-                                    <select value={newEvent.category} onChange={(e) => handleNewEventFieldChange('category', e.target.value)}>
-                                        <option value="">-- Select --</option>
-                                        <option value="Super Typhoon">🌪️ Super Typhoon</option>
-                                        <option value="Typhoon">🌀 Typhoon</option>
-                                        <option value="Severe Tropical Storm">🌧️ Severe Tropical Storm</option>
-                                        <option value="Tropical Storm">🌧️ Tropical Storm</option>
-                                        <option value="Tropical Depression">☁️ Tropical Depression</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div className="datetime-row">
-                                <div className="datetime-group">
-                                    <label>Start Date/Time</label>
-                                    <input
-                                        type="datetime-local"
-                                        value={newEvent.startDateTime}
-                                        onChange={(e) => handleNewEventFieldChange('startDateTime', e.target.value)}
-                                    />
-                                </div>
-                                <div className="datetime-group">
-                                    <label>End Date/Time</label>
-                                    <input
-                                        type="datetime-local"
-                                        value={newEvent.endDateTime}
-                                        onChange={(e) => handleNewEventFieldChange('endDateTime', e.target.value)}
-                                    />
-                                </div>
-                            </div>
-                            <div className="form-row">
-                                <div className="form-group">
-                                    <label>Track Positions</label>
-                                    <input
-                                        type="text"
-                                        value={newEvent.trackPositions}
-                                        onChange={(e) => handleNewEventFieldChange('trackPositions', e.target.value)}
-                                        placeholder="e.g., 13.0N 121.2E → 13.8N 122.1E"
-                                    />
-                                </div>
-                                <div className="form-group">
-                                    <label>Intensity</label>
-                                    <input
-                                        type="text"
-                                        value={newEvent.intensity}
-                                        onChange={(e) => handleNewEventFieldChange('intensity', e.target.value)}
-                                        placeholder="e.g., 95 kph / 52 kt"
-                                    />
-                                </div>
-                            </div>
-                            <div className="form-row">
-                                <div className="form-group">
-                                    <label>🌤️ General Weather</label>
-                                    <input
-                                        type="text"
-                                        value={newEvent.general_weather}
-                                        onChange={(e) => handleNewEventFieldChange('general_weather', e.target.value)}
-                                        placeholder="e.g., Rainy with strong winds"
-                                    />
-                                </div>
-                                <div className="form-group">
-                                    <label>Report Link</label>
-                                    <input
-                                        type="url"
-                                        value={newEvent.reportLink}
-                                        onChange={(e) => handleNewEventFieldChange('reportLink', e.target.value)}
-                                        placeholder="https://..."
-                                    />
-                                </div>
-                            </div>
-                            <div className="form-section">
-                                <h4>📍 Affected Areas</h4>
-                                <div className="scope-grid">
-                                    {allProvinces.map(p => {
-                                        const selected = newEvent.provinces.includes(p);
-                                        return (
-                                            <button
-                                                type="button"
-                                                key={p}
-                                                className={`scope-item ${selected ? 'selected' : ''}`}
-                                                onClick={() => {
-                                                    setNewEvent(prev => {
-                                                        const provinces = selected ? prev.provinces.filter(x => x !== p) : [...prev.provinces, p];
-                                                        return {
-                                                            ...prev,
-                                                            provinces,
-                                                            sendToAllUsers: provinces.length === allProvinces.length
-                                                        };
-                                                    });
-                                                }}
-                                            >
-                                                {p}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                                <label className="checkbox-group">
-                                    <input
-                                        type="checkbox"
-                                        checked={newEvent.sendToAllUsers}
-                                        onChange={(e) => {
-                                            const checked = e.target.checked;
-                                            setNewEvent(prev => ({
-                                                ...prev,
-                                                sendToAllUsers: checked,
-                                                provinces: checked ? allProvinces : prev.provinces
-                                            }));
-                                        }}
-                                    />
-                                    Send to all offices
-                                </label>
-                            </div>
-                            <div className="form-section">
-                                <h4>📊 Impact Summary</h4>
-                                <div className="form-row">
-                                    <div className="form-group">
-                                        <label>Related Incidents</label>
-                                        <input
-                                            type="number"
-                                            value={newEvent.related_incidents}
-                                            onChange={(e) => handleNewEventFieldChange('related_incidents', e.target.value === '' ? '' : parseInt(e.target.value, 10))}
-                                            placeholder="0"
-                                        />
-                                    </div>
-                                    <div className="form-group">
-                                        <label>Incident Remarks</label>
-                                        <input
-                                            type="text"
-                                            value={newEvent.remark_related_incidents}
-                                            onChange={(e) => handleNewEventFieldChange('remark_related_incidents', e.target.value)}
-                                            placeholder="Remarks..."
-                                        />
-                                    </div>
-                                </div>
-                                <div className="form-row">
-                                    <div className="form-group">
-                                        <label>Casualties</label>
-                                        <input
-                                            type="number"
-                                            value={newEvent.casualties}
-                                            onChange={(e) => handleNewEventFieldChange('casualties', e.target.value === '' ? '' : parseInt(e.target.value, 10))}
-                                            placeholder="0"
-                                        />
-                                    </div>
-                                    <div className="form-group">
-                                        <label>Casualty Remarks</label>
-                                        <input
-                                            type="text"
-                                            value={newEvent.remark_casualties}
-                                            onChange={(e) => handleNewEventFieldChange('remark_casualties', e.target.value)}
-                                            placeholder="Remarks..."
-                                        />
-                                    </div>
-                                </div>
-                                <div className="form-row">
-                                    <div className="form-group">
-                                        <label>Power Status</label>
-                                        <input
-                                            type="text"
-                                            value={newEvent.power_status}
-                                            onChange={(e) => handleNewEventFieldChange('power_status', e.target.value)}
-                                            placeholder="e.g., On, Off, Intermittent"
-                                        />
-                                    </div>
-                                    <div className="form-group">
-                                        <label>Communication Lines</label>
-                                        <input
-                                            type="text"
-                                            value={newEvent.communication_lines}
-                                            onChange={(e) => handleNewEventFieldChange('communication_lines', e.target.value)}
-                                            placeholder="e.g., Working, Down"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="form-row">
-                                <div className="form-group">
-                                    <label>Damage to Facilities</label>
-                                    <input
-                                        type="text"
-                                        value={newEvent.damage_facilities}
-                                        onChange={(e) => handleNewEventFieldChange('damage_facilities', e.target.value)}
-                                        placeholder="e.g., Minor, Major"
-                                    />
-                                </div>
-                                <div className="form-group">
-                                    <label>Assistance Provided</label>
-                                    <input
-                                        type="text"
-                                        value={newEvent.assistance_provided}
-                                        onChange={(e) => handleNewEventFieldChange('assistance_provided', e.target.value)}
-                                        placeholder="e.g., Relief, Evacuation"
-                                    />
-                                </div>
-                            </div>
-                            <div className="form-row checkbox-group">
-                                <label>
-                                    <input
-                                        type="checkbox"
-                                        checked={newEvent.work_suspension}
-                                        onChange={(e) => handleNewEventFieldChange('work_suspension', e.target.checked)}
-                                    />
-                                    Work Suspension
-                                </label>
-                            </div>
-                            <div className="form-group">
-                                <label>Event Image</label>
-                                <input
-                                    type="file"
-                                    accept="image/*"
-                                    onChange={(e) => {
-                                        const file = e.target.files[0];
-                                        if (file) {
-                                            const reader = new FileReader();
-                                            reader.onload = () => handleNewEventFieldChange('imageUrl', reader.result);
-                                            reader.readAsDataURL(file);
-                                        }
-                                    }}
-                                />
-                                {newEvent.imageUrl && (
-                                    <div className="image-preview-container">
-                                        <img src={newEvent.imageUrl} alt="Preview" className="event-image-preview" />
-                                        <button type="button" className="remove-image-btn" onClick={() => handleNewEventFieldChange('imageUrl', '')}>✕ Remove</button>
-                                    </div>
-                                )}
-                            </div>
-                            <div className="modal-buttons">
-                                <button type="submit" className="success">🌪️ Create Event</button>
-                                <button type="button" onClick={() => setShowReportModal(false)}>Cancel</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
+
+            <EventDetailsModal
+                isOpen={showDetailsModal}
+                onClose={handleCloseDetailsModal}
+                selectedEvent={selectedEvent}
+                isEditingReportLink={isEditingReportLink}
+                reportLinkInput={reportLinkInput}
+                setReportLinkInput={setReportLinkInput}
+                setIsEditingReportLink={setIsEditingReportLink}
+                handleSaveReportLink={handleSaveReportLink}
+                canEditEvents={canEditEvents}
+                handleDeleteEvent={handleDeleteEvent}
+                handleEditEvent={handleEditEvent}
+                getAlertColor={getAlertColor}
+                openImageModal={openImageModal}
+                handleRejectEvent={handleRejectEvent}
+            />
+
+            <AddEventModal
+                isOpen={showAddModal}
+                onClose={handleCloseAddModal}
+                isEditingEvent={isEditingEvent}
+                newEvent={newEvent}
+                handleNewEventFieldChange={handleNewEventFieldChange}
+                setNewEvent={setNewEvent}
+                handleAddEvent={handleAddEvent}
+                allProvinces={allProvinces}
+            />
+
             {showReportReviewModal && selectedReport && (
                 <div className="modal-overlay" onClick={() => setShowReportReviewModal(false)}>
                     <div className="modal-content large-modal" onClick={e => e.stopPropagation()}>
@@ -3437,13 +4103,14 @@ const Dashboard = ({ onLogout, currentUser }) => {
                             <div className="modal-buttons">
                                 <button className="success" onClick={() => { approveReport(selectedReport.id); setShowReportReviewModal(false); }}>Approve</button>
                                 <button className="danger" onClick={() => { setShowReportReviewModal(false); openRejectReportModal(selectedReport); }}>Reject</button>
-                                <button onClick={() => setShowReportReviewModal(false)}>Close</button>
+                                <button className="modal-close-footer-btn" onClick={() => setShowReportReviewModal(false)}>Close</button>
                             </div>
                         )}
-                        {selectedReport.status !== 'pending' && <button onClick={() => setShowReportReviewModal(false)}>Close</button>}
+                        {selectedReport.status !== 'pending' && <button className="modal-close-footer-btn" onClick={() => setShowReportReviewModal(false)}>Close</button>}
                     </div>
                 </div>
             )}
+
             {showSettingsModal && (
                 <div className="modal-overlay" onClick={() => setShowSettingsModal(false)}>
                     <div className="modal-content large-modal" onClick={e => e.stopPropagation()}>
@@ -3503,25 +4170,237 @@ const Dashboard = ({ onLogout, currentUser }) => {
                                 showToast('Settings saved.', 'success');
                                 setShowSettingsModal(false);
                             }}>Save Settings</button>
-                            <button onClick={() => setShowSettingsModal(false)}>Close</button>
+                            <button className="modal-close-footer-btn" onClick={() => setShowSettingsModal(false)}>Close</button>
                         </div>
                     </div>
                 </div>
             )}
+
             {showRejectModal && (
                 <div className="modal-overlay" onClick={() => setShowRejectModal(false)}>
                     <div className="modal-content">
                         <h3>Reject Event</h3>
                         <textarea className="reject-reason-textarea" placeholder="Provide reason for rejection..." value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} />
-                        <div className="modal-buttons"><button className="danger" onClick={confirmRejectEvent}>Confirm Rejection</button><button onClick={() => setShowRejectModal(false)}>Cancel</button></div>
+                        <div className="modal-buttons">
+                            <button className="danger" onClick={confirmRejectEvent}>Confirm Rejection</button>
+                            <button className="modal-close-footer-btn" onClick={() => setShowRejectModal(false)}>Cancel</button>
+                        </div>
                     </div>
                 </div>
             )}
+
             {showImageModal && imageModalSrc && (
                 <div className="modal-overlay" onClick={closeImageModal}>
                     <div className="modal-content image-modal-content" onClick={e => e.stopPropagation()}>
                         <button className="modal-close" onClick={closeImageModal}>×</button>
                         <img src={imageModalSrc} alt="Enlarged" className="image-modal-img" />
+                    </div>
+                </div>
+            )}
+
+            {showReportModal && (
+                <div className="modal-overlay" onClick={() => setShowReportModal(false)}>
+                    <div className="modal-content large-modal" onClick={e => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h3>📤 Submit Report - {selectedOffice}</h3>
+                            <button className="modal-close" onClick={() => { setShowReportModal(false); setReportFormData(null); }}>×</button>
+                        </div>
+                        <div className="report-form">
+                            <div className="form-section">
+                                <h4>📡 Warning Signals</h4>
+                                <div className="signal-edit-row">
+                                    <input type="text" placeholder="New municipality" value={newMunicipality} onChange={(e) => setNewMunicipality(e.target.value)} />
+                                    <select value={newSignal} onChange={(e) => setNewSignal(parseInt(e.target.value))}>
+                                        <option value={1}>Signal #1</option><option value={2}>Signal #2</option>
+                                        <option value={3}>Signal #3</option><option value={4}>Signal #4</option><option value={5}>Signal #5</option>
+                                    </select>
+                                    <button className="add-mun-btn" onClick={handleReportAddMunicipality}>+ Add</button>
+                                </div>
+                                <div className="municipality-list">
+                                    {(reportFormData?.municipalities || []).map((mun) => (
+                                        <div key={mun} className="signal-edit-row">
+                                            <span className="municipality-name">{mun}</span>
+                                            <select value={reportFormData?.warning_signals?.[mun] || 0} onChange={(e) => handleReportSignalChange(mun, e.target.value)}>
+                                                <option value={0}>No Signal</option><option value={1}>Signal #1</option><option value={2}>Signal #2</option>
+                                                <option value={3}>Signal #3</option><option value={4}>Signal #4</option><option value={5}>Signal #5</option>
+                                            </select>
+                                            <button className="remove-mun-btn" onClick={() => handleReportRemoveMunicipality(mun)}>🗑️</button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="form-section">
+                                <h4>🌤️ General Weather</h4>
+                                <input type="text" placeholder="General weather situation" value={reportFormData?.general_weather || ''} onChange={(e) => handleReportFieldChange('general_weather', e.target.value)} />
+                            </div>
+
+                            <div className="form-section">
+                                <h4>📊 Effects</h4>
+                                <div className="form-row">
+                                    <div className="form-group"><label>Related Incidents</label><input type="number" value={reportFormData?.related_incidents || 0} onChange={(e) => handleReportFieldChange('related_incidents', parseInt(e.target.value, 10) || 0)} /></div>
+                                    <div className="form-group"><label>Remarks</label><input type="text" value={reportFormData?.remark_related_incidents || ''} onChange={(e) => handleReportFieldChange('remark_related_incidents', e.target.value)} /></div>
+                                </div>
+                                <div className="form-row">
+                                    <div className="form-group"><label>Casualties</label><input type="number" value={reportFormData?.casualties || 0} onChange={(e) => handleReportFieldChange('casualties', parseInt(e.target.value, 10) || 0)} /></div>
+                                    <div className="form-group"><label>Remarks</label><input type="text" value={reportFormData?.remark_casualties || ''} onChange={(e) => handleReportFieldChange('remark_casualties', e.target.value)} /></div>
+                                </div>
+                                <div className="form-row">
+                                    <div className="form-group"><label>Power Status</label><input type="text" value={reportFormData?.power_status || ''} onChange={(e) => handleReportFieldChange('power_status', e.target.value)} /></div>
+                                    <div className="form-group"><label>Remarks</label><input type="text" value={reportFormData?.remark_power_status || ''} onChange={(e) => handleReportFieldChange('remark_power_status', e.target.value)} /></div>
+                                </div>
+                                <div className="form-row">
+                                    <div className="form-group"><label>Communication Lines</label><input type="text" value={reportFormData?.communication_lines || ''} onChange={(e) => handleReportFieldChange('communication_lines', e.target.value)} /></div>
+                                    <div className="form-group"><label>Remarks</label><input type="text" value={reportFormData?.remark_communication_lines || ''} onChange={(e) => handleReportFieldChange('remark_communication_lines', e.target.value)} /></div>
+                                </div>
+                                <div className="form-row">
+                                    <div className="form-group"><label>Damage to Facilities</label><input type="text" value={reportFormData?.damage_facilities || ''} onChange={(e) => handleReportFieldChange('damage_facilities', e.target.value)} /></div>
+                                    <div className="form-group"><label>Remarks</label><input type="text" value={reportFormData?.remark_damage_facilities || ''} onChange={(e) => handleReportFieldChange('remark_damage_facilities', e.target.value)} /></div>
+                                </div>
+                                <div className="form-row checkbox-group">
+                                    <label><input type="checkbox" checked={reportFormData?.work_suspension || false} onChange={(e) => handleReportFieldChange('work_suspension', e.target.checked)} /> Work Suspension</label>
+                                    <div className="form-group"><label>Remarks</label><input type="text" value={reportFormData?.remark_work_suspension || ''} onChange={(e) => handleReportFieldChange('remark_work_suspension', e.target.value)} /></div>
+                                </div>
+                                <div className="form-row">
+                                    <div className="form-group"><label>Assistance Provided</label><input type="text" value={reportFormData?.assistance_provided || ''} onChange={(e) => handleReportFieldChange('assistance_provided', e.target.value)} /></div>
+                                    <div className="form-group"><label>Remarks</label><input type="text" value={reportFormData?.remark_assistance_provided || ''} onChange={(e) => handleReportFieldChange('remark_assistance_provided', e.target.value)} /></div>
+                                </div>
+                            </div>
+
+                            <div className="form-section">
+                                <h4>🏗️ Damage Building</h4>
+                                <div className="damage-form">
+                                    <div className="form-row">
+                                        <div className="form-group"><label>Description</label><input type="text" value={reportNewDamage.description} onChange={(e) => setReportNewDamage({ ...reportNewDamage, description: e.target.value })} placeholder="Damage description" /></div>
+                                        <div className="form-group"><label>Cost</label><input type="number" value={reportNewDamage.cost} onChange={(e) => setReportNewDamage({ ...reportNewDamage, cost: e.target.value })} placeholder="0" /></div>
+                                    </div>
+                                    <div className="form-row">
+                                        <div className="form-group"><label>Status</label>
+                                            <select value={reportNewDamage.status} onChange={(e) => setReportNewDamage({ ...reportNewDamage, status: e.target.value })}>
+                                                <option>Reported</option><option>Assessing</option><option>Under Repair</option><option>Repaired</option><option>Condemned</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div className="form-buttons">
+                                        {editingReportDamageIndex !== null ? (
+                                            <button className="success" onClick={handleReportUpdateDamage}>Update</button>
+                                        ) : (
+                                            <button className="add-mun-btn" onClick={handleReportAddDamage}>+ Add</button>
+                                        )}
+                                        {editingReportDamageIndex !== null && <button onClick={() => { setEditingReportDamageIndex(null); setReportNewDamage({ description: '', cost: '', status: 'Reported' }); }}>Cancel</button>}
+                                    </div>
+                                </div>
+                                <div className="damage-list">
+                                    {(reportFormData?.damage_details || []).map((damage, index) => (
+                                        <div key={index} className="damage-item">
+                                            <div className="damage-info">
+                                                <strong>{damage.description}</strong>
+                                                <span>₱{damage.cost || 0}</span>
+                                                <span className="status-badge">{damage.status}</span>
+                                            </div>
+                                            <div className="damage-actions">
+                                                <button className="view-btn" onClick={() => handleReportEditDamage(index)}>✏️</button>
+                                                <button className="danger" onClick={() => handleReportDeleteDamage(index)}>🗑️</button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="form-section">
+                                <h4>🛠️ Equipment Damage</h4>
+                                <div className="damage-form">
+                                    <div className="form-row">
+                                        <div className="form-group"><label>Equipment Name</label><input type="text" value={reportNewEquipment.name} onChange={(e) => setReportNewEquipment({ ...reportNewEquipment, name: e.target.value })} placeholder="Equipment name" /></div>
+                                        <div className="form-group"><label>Cost</label><input type="number" value={reportNewEquipment.cost} onChange={(e) => setReportNewEquipment({ ...reportNewEquipment, cost: e.target.value })} placeholder="0" /></div>
+                                    </div>
+                                    <div className="form-row">
+                                        <div className="form-group"><label>Description</label><input type="text" value={reportNewEquipment.description} onChange={(e) => setReportNewEquipment({ ...reportNewEquipment, description: e.target.value })} placeholder="Description" /></div>
+                                        <div className="form-group"><label>Status</label>
+                                            <select value={reportNewEquipment.status} onChange={(e) => setReportNewEquipment({ ...reportNewEquipment, status: e.target.value })}>
+                                                <option>Reported</option><option>Assessing</option><option>Under Repair</option><option>Repaired</option><option>Condemned</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div className="form-buttons">
+                                        {editingReportEquipmentIndex !== null ? (
+                                            <button className="success" onClick={handleReportUpdateEquipment}>Update</button>
+                                        ) : (
+                                            <button className="add-mun-btn" onClick={handleReportAddEquipment}>+ Add</button>
+                                        )}
+                                        {editingReportEquipmentIndex !== null && <button onClick={() => { setEditingReportEquipmentIndex(null); setReportNewEquipment({ name: '', description: '', cost: '', status: 'Reported' }); }}>Cancel</button>}
+                                    </div>
+                                </div>
+                                <div className="damage-list">
+                                    {(reportFormData?.equipment_details || []).map((equip, index) => (
+                                        <div key={index} className="damage-item">
+                                            <div className="damage-info">
+                                                <strong>{equip.name}</strong>
+                                                <span>{equip.description}</span>
+                                                <span>₱{equip.cost || 0}</span>
+                                                <span className="status-badge">{equip.status}</span>
+                                            </div>
+                                            <div className="damage-actions">
+                                                <button className="view-btn" onClick={() => handleReportEditEquipment(index)}>✏️</button>
+                                                <button className="danger" onClick={() => handleReportDeleteEquipment(index)}>🗑️</button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="form-section">
+                                <h4>👥 Affected Staff</h4>
+                                <div className="staff-form">
+                                    <div className="form-row">
+                                        <div className="form-group"><label>Name</label><input type="text" value={reportNewStaff.name} onChange={(e) => setReportNewStaff({ ...reportNewStaff, name: e.target.value })} placeholder="Staff name" /></div>
+                                        <div className="form-group"><label>Area</label><input type="text" value={reportNewStaff.area} onChange={(e) => setReportNewStaff({ ...reportNewStaff, area: e.target.value })} placeholder="Area" /></div>
+                                    </div>
+                                    <div className="form-row">
+                                        <div className="form-group"><label>Assistance</label><input type="text" value={reportNewStaff.assistance} onChange={(e) => setReportNewStaff({ ...reportNewStaff, assistance: e.target.value })} placeholder="Assistance provided" /></div>
+                                        <div className="form-group"><label>Status</label>
+                                            <select value={reportNewStaff.status} onChange={(e) => setReportNewStaff({ ...reportNewStaff, status: e.target.value })}>
+                                                <option>Active</option><option>Injured</option><option>Evacuated</option><option>Rescued</option><option>Deceased</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div className="form-buttons">
+                                        {editingReportStaffIndex !== null ? (
+                                            <button className="success" onClick={handleReportUpdateStaff}>Update</button>
+                                        ) : (
+                                            <button className="add-mun-btn" onClick={handleReportAddStaff}>+ Add</button>
+                                        )}
+                                        {editingReportStaffIndex !== null && <button onClick={() => { setEditingReportStaffIndex(null); setReportNewStaff({ name: '', area: '', assistance: '', status: 'Active' }); }}>Cancel</button>}
+                                    </div>
+                                </div>
+                                <div className="staff-list">
+                                    {(reportFormData?.affected_staff || []).map((staff, index) => (
+                                        <div key={index} className="staff-item">
+                                            <div className="staff-info">
+                                                <strong>{staff.name}</strong>
+                                                <span>{staff.area}</span>
+                                                <span>Assistance: {staff.assistance || 'None'}</span>
+                                                <span className="status-badge">{staff.status}</span>
+                                            </div>
+                                            <div className="staff-actions">
+                                                <button className="view-btn" onClick={() => handleReportEditStaff(index)}>✏️</button>
+                                                <button className="danger" onClick={() => handleReportDeleteStaff(index)}>🗑️</button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="form-section">
+                                <h4>📝 Remarks</h4>
+                                <textarea value={reportFormData?.remark || ''} onChange={(e) => handleReportFieldChange('remark', e.target.value)} rows="3" placeholder="Additional remarks..." />
+                            </div>
+
+                            <div className="modal-buttons">
+                                <button className="success" onClick={submitReport}>📤 Submit Report</button>
+                                <button className="modal-close-footer-btn" onClick={() => { setShowReportModal(false); setReportFormData(null); }}>Cancel</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}
