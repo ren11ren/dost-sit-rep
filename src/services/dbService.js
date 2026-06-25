@@ -1,15 +1,16 @@
-const API_URL = `http://${window.location.hostname}:5005/api`;
+const API_PORT = process.env.REACT_APP_API_PORT || '5010';
+const API_URL = `http://${window.location.hostname}:${API_PORT}/api`;
 
 const apiCall = async (endpoint, method = 'GET', data = null) => {
   const options = {
     method,
     headers: { 'Content-Type': 'application/json' },
   };
-  
+
   if (data) {
     options.body = JSON.stringify(data);
   }
-  
+
   try {
     const response = await fetch(`${API_URL}${endpoint}`, options);
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);

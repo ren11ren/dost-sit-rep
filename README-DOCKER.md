@@ -59,17 +59,22 @@ docker-compose -f docker-compose.prod.yml down
 ## 🛠️ Configuration & Database Setup
 
 The backend utilizes cloud-hosted databases by default:
-*   **Postgres Database (via Neon.tech):** Hardcoded inside `server.js`.
-*   **MySQL Database (via Aiven):** Defined in the `.env` file and consumed by `src/services/database.js`.
+*   **PostgreSQL Database (Aiven or compatible):** Configured via `.env` and consumed by `server.js`.
+*   **MySQL Database (Aiven):** Used by `src/services/database.js` when that service is enabled.
 
 ### Environment Variables
-For MySQL connectivity, ensure you have a valid `.env` file in the root of the `dost-sit-rep` folder:
+For PostgreSQL connectivity (Aiven recommended), ensure you have a valid `.env` file in the root of the `dost-sit-rep` folder:
 ```env
-DB_HOST=your-mysql-host.aivencloud.com
-DB_PORT=18750
-DB_USER=avnadmin
-DB_PASSWORD=your_password
-DB_NAME=defaultdb
+DATABASE_URL=postgres://username:password@your-pg-host.aivencloud.com:port/defaultdb?sslmode=require
+
+# Optional split variables (used when DATABASE_URL is not set)
+PGHOST=your-pg-host.aivencloud.com
+PGPORT=port
+PGUSER=username
+PGPASSWORD=your_password
+PGDATABASE=defaultdb
+
+# Server port
 PORT=5001
 ```
 

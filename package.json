@@ -2,18 +2,18 @@
   "name": "cyclone-frontend",
   "version": "1.0.0",
   "private": true,
-  "proxy": "http://localhost:5005",
+  "proxy": "http://localhost:5010",
   "scripts": {
-    "start": "react-scripts start",
+    "start": "PORT=5006 REACT_APP_API_PORT=5010 react-scripts start",
     "server": "node server.js",
-    "dev": "concurrently \"npm run server\" \"npm start\"",
+    "dev": "concurrently \"PORT=5010 npm run server\" \"npm start\"",
     "build": "react-scripts build"
   },
   "dependencies": {
     "cors": "^2.8.6",
     "dotenv": "^16.6.1",
     "express": "^4.22.2",
-    "mysql2": "^3.6.0",
+    "mysql2": "^3.22.5",
     "pg": "^8.21.0",
     "pg-hstore": "^2.3.4",
     "react": "^18.2.0",
