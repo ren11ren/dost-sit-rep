@@ -9,16 +9,16 @@ services:
       context: .
       dockerfile: Dockerfile
       target: production-backend
-    ports:
-      - "5001:5001"
+    ports::
+      - "5002:5001" # Change the host port here
       - "5005:5005"
     environment:
       - NODE_ENV=production
-      - DB_HOST=${mysql-11a72ed3-rainierganaden1106-5bb8.h.aivencloud.com}
-      - DB_PORT=${18750}
-      - DB_USER=${avnadmin}
-      - DB_PASSWORD=${AVNS_iAhIWlZIisjJZ9ztt9-}
-      - DB_NAME=${defaultdb}
+      - DB_HOST=your_actual_database_host_here
+      - DB_PORT=18750
+      - DB_USER=avnadmin
+      - DB_PASSWORD=AVNS_iAhIWlZIisjJZ9ztt9-
+      - DB_NAME=defaultdb
     env_file:
       - .env
     restart: always
