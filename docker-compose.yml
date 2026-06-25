@@ -19,13 +19,12 @@ services:
       - .:/app
       - /app/node_modules
     environment:
-      - NODE_ENV=development
-      - PORT=5001
-      - DB_HOST=${DB_HOST}
-      - DB_PORT=${DB_PORT}
-      - DB_USER=${DB_USER}
-      - DB_PASSWORD=${DB_PASSWORD}
-      - DB_NAME=${DB_NAME}
+    - NODE_ENV=production
+      - DB_HOST=${mysql-11a72ed3-rainierganaden1106-5bb8.h.aivencloud.com}
+      - DB_PORT=${18750}
+      - DB_USER=${avnadmin}
+      - DB_PASSWORD=${AVNS_iAhIWlZIisjJZ9ztt9-}
+      - DB_NAME=${defaultdb}
     env_file:
       - .env
     networks:
