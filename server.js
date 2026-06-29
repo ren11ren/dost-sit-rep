@@ -424,9 +424,36 @@ app.post('/api/active-menu', async (req, res) => {
 });
 
 app.post('/api/sync-all', async (req, res) => {
-    const { officesData, events, users, pendingReports, notifications, activeMenu } = req.body || {};
+    const { officesData, events, users, pendingReports, notifications, activeMenu, allowEmptySync } = req.body || {};
     const conn = await pool.getConnection();
     try {
+        const incomingOfficeCount = officesData && typeof officesData === 'object' ? Object.keys(officesData).length : 0;
+        const incomingEventCount = Array.isArray(events) ? events.length : 0;
+        const incomingUserCount = Array.isArray(users) ? users.length : 0;
+        const incomingReportCount = Array.isArray(pendingReports) ? pendingReports.length : 0;
+        const incomingNotifCount = Array.isArray(notifications) ? notifications.length : 0;
+        const incomingTotal = incomingOfficeCount + incomingEventCount + incomingUserCount + incomingReportCount + incomingNotifCount;
+
+        const [existingOfficeRows] = await conn.execute('SELECT COUNT(*) AS cnt FROM offices');
+        const [existingEventRows] = await conn.execute('SELECT COUNT(*) AS cnt FROM events');
+        const [existingUserRows] = await conn.execute('SELECT COUNT(*) AS cnt FROM users');
+        const [existingReportRows] = await conn.execute('SELECT COUNT(*) AS cnt FROM pending_reports');
+        const [existingNotifRows] = await conn.execute('SELECT COUNT(*) AS cnt FROM notifications');
+        const existingTotal =
+            (existingOfficeRows?.[0]?.cnt || 0) +
+            (existingEventRows?.[0]?.cnt || 0) +
+            (existingUserRows?.[0]?.cnt || 0) +
+            (existingReportRows?.[0]?.cnt || 0) +
+            (existingNotifRows?.[0]?.cnt || 0);
+
+        if (!allowEmptySync && existingTotal > 0 && incomingTotal === 0) {
+            return res.status(409).json({
+                error: 'Safety lock: empty sync payload blocked to prevent data loss',
+                existingTotal,
+                incomingTotal
+            });
+        }
+
         await conn.beginTransaction();
 
         if (officesData && typeof officesData === 'object') {

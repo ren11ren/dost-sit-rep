@@ -292,6 +292,24 @@ const Dashboard = ({ onLogout, currentUser }) => {
     useEffect(() => {
         let unsubscribe = null;
 
+        const hasRemoteData = (payload) => {
+            const hasOffices = !!payload?.offices && Object.keys(payload.offices).length > 0;
+            const hasEvents = Array.isArray(payload?.events) && payload.events.length > 0;
+            const hasUsers = Array.isArray(payload?.users) && payload.users.length > 0;
+            const hasReports = Array.isArray(payload?.reports) && payload.reports.length > 0;
+            const hasNotifications = Array.isArray(payload?.notifications) && payload.notifications.length > 0;
+            return hasOffices || hasEvents || hasUsers || hasReports || hasNotifications;
+        };
+
+        const hasLocalUserData = () => {
+            const officesChanged = JSON.stringify(officesData) !== JSON.stringify(DEFAULT_OFFICE_DATA);
+            const eventsChanged = JSON.stringify(events) !== JSON.stringify(archiveOldEvents(DEFAULT_EVENTS));
+            const usersChanged = JSON.stringify(users) !== JSON.stringify(DEFAULT_USERS);
+            const hasReports = Array.isArray(pendingReports) && pendingReports.length > 0;
+            const hasNotifications = Array.isArray(notifications) && notifications.length > 0;
+            return officesChanged || eventsChanged || usersChanged || hasReports || hasNotifications;
+        };
+
         const applyRemoteData = (payload) => {
             suppressRemotePushRef.current = true;
             if (payload?.offices) setOfficesData(payload.offices);
@@ -305,15 +323,30 @@ const Dashboard = ({ onLogout, currentUser }) => {
 
         const bootstrapSync = async () => {
             const initial = await syncService.syncData();
-            if (initial) {
+
+            if (!initial) {
+                // Remote fetch failed: do not seed remote from potentially empty local defaults.
+            } else if (hasRemoteData(initial)) {
                 const activeMenuRemote = await dbService.getActiveMenu();
                 applyRemoteData({
                     ...initial,
                     activeMenu: activeMenuRemote || 'dashboard'
                 });
+            } else if (hasLocalUserData()) {
+                // Remote is confirmed reachable and empty; seed it only when local has meaningful data.
+                await dbService.syncAllData({
+                    officesData,
+                    events,
+                    users,
+                    pendingReports,
+                    notifications,
+                    activeMenu
+                });
             }
+
             unsubscribe = syncService.onSync((remote) => {
                 if (!remote) return;
+                if (!hasRemoteData(remote)) return;
                 applyRemoteData(remote);
             });
             syncService.startAutoSync();
