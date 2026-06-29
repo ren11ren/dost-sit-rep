@@ -1,3 +1,5 @@
+// Dashboard.js - Complete Full Code
+
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import * as XLSX from 'xlsx';
 import dbService from '../services/dbService';
@@ -63,6 +65,134 @@ const INITIAL_SETTINGS = {
 const EMPTY_DAMAGE = { description: '', cost: '', status: 'Reported', image: null };
 const EMPTY_EQUIPMENT = { name: '', description: '', cost: '', status: 'Reported', image: null };
 const EMPTY_STAFF = { name: '', area: '', assistance: '', status: 'Active' };
+
+// ============================================================
+// IMAGE PLACEHOLDERS
+// ============================================================
+
+// DOST Region 1 Master Logo
+const DOST_MASTER_LOGO = 'data:image/svg+xml,' + encodeURIComponent(`
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <rect width="200" height="200" rx="20" fill="#0a2a4a"/>
+  <rect x="15" y="15" width="170" height="170" rx="12" fill="none" stroke="#ffd700" stroke-width="2"/>
+  <text x="100" y="65" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="20" font-weight="bold">DOST</text>
+  <text x="100" y="88" text-anchor="middle" fill="#ffd700" font-family="Arial, sans-serif" font-size="13">REGION 1</text>
+  <text x="100" y="115" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="10">DISASTER</text>
+  <text x="100" y="132" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="10">MANAGEMENT</text>
+  <circle cx="100" cy="165" r="12" fill="none" stroke="#ffd700" stroke-width="1.5"/>
+  <text x="100" y="170" text-anchor="middle" fill="#ffd700" font-family="Arial, sans-serif" font-size="14">★</text>
+</svg>
+`);
+
+// PSTO-Ilocos Norte
+const PSTO_ILOCOS_NORTE_IMG = 'data:image/svg+xml,' + encodeURIComponent(`
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 200">
+  <defs>
+    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a3c6e;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#2a6cae;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect width="300" height="200" rx="15" fill="url(#grad1)"/>
+  <rect x="10" y="10" width="280" height="180" rx="10" fill="none" stroke="#ffd700" stroke-width="2"/>
+  <text x="150" y="45" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="13" font-weight="bold">DOST REGION 1</text>
+  <text x="150" y="65" text-anchor="middle" fill="#ffd700" font-family="Arial, sans-serif" font-size="10">PSTO OFFICE</text>
+  <circle cx="150" cy="105" r="30" fill="none" stroke="#ffd700" stroke-width="2"/>
+  <text x="150" y="112" text-anchor="middle" fill="#ffd700" font-family="Arial, sans-serif" font-size="28">☀️</text>
+  <text x="150" y="155" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="16" font-weight="bold">ILOCOS NORTE</text>
+  <text x="150" y="175" text-anchor="middle" fill="#b0c4de" font-family="Arial, sans-serif" font-size="11">Provincial Science & Technology Office</text>
+</svg>
+`);
+
+// PSTO-Ilocos Sur
+const PSTO_ILOCOS_SUR_IMG = 'data:image/svg+xml,' + encodeURIComponent(`
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 200">
+  <defs>
+    <linearGradient id="grad2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a5c3e;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#2a9c6e;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect width="300" height="200" rx="15" fill="url(#grad2)"/>
+  <rect x="10" y="10" width="280" height="180" rx="10" fill="none" stroke="#ffd700" stroke-width="2"/>
+  <text x="150" y="45" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="13" font-weight="bold">DOST REGION 1</text>
+  <text x="150" y="65" text-anchor="middle" fill="#ffd700" font-family="Arial, sans-serif" font-size="10">PSTO OFFICE</text>
+  <circle cx="150" cy="105" r="30" fill="none" stroke="#ffd700" stroke-width="2"/>
+  <text x="150" y="112" text-anchor="middle" fill="#ffd700" font-family="Arial, sans-serif" font-size="28">🌾</text>
+  <text x="150" y="155" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="16" font-weight="bold">ILOCOS SUR</text>
+  <text x="150" y="175" text-anchor="middle" fill="#b0c4de" font-family="Arial, sans-serif" font-size="11">Provincial Science & Technology Office</text>
+</svg>
+`);
+
+// PSTO-La Union
+const PSTO_LA_UNION_IMG = 'data:image/svg+xml,' + encodeURIComponent(`
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 200">
+  <defs>
+    <linearGradient id="grad3" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#6a2c3e;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#aa5c7e;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect width="300" height="200" rx="15" fill="url(#grad3)"/>
+  <rect x="10" y="10" width="280" height="180" rx="10" fill="none" stroke="#ffd700" stroke-width="2"/>
+  <text x="150" y="45" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="13" font-weight="bold">DOST REGION 1</text>
+  <text x="150" y="65" text-anchor="middle" fill="#ffd700" font-family="Arial, sans-serif" font-size="10">PSTO OFFICE</text>
+  <circle cx="150" cy="105" r="30" fill="none" stroke="#ffd700" stroke-width="2"/>
+  <text x="150" y="112" text-anchor="middle" fill="#ffd700" font-family="Arial, sans-serif" font-size="28">🏖️</text>
+  <text x="150" y="155" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="16" font-weight="bold">LA UNION</text>
+  <text x="150" y="175" text-anchor="middle" fill="#b0c4de" font-family="Arial, sans-serif" font-size="11">Provincial Science & Technology Office</text>
+</svg>
+`);
+
+// PSTO-Pangasinan
+const PSTO_PANGASINAN_IMG = 'data:image/svg+xml,' + encodeURIComponent(`
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 200">
+  <defs>
+    <linearGradient id="grad4" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#2a5c3e;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#4a9c6e;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect width="300" height="200" rx="15" fill="url(#grad4)"/>
+  <rect x="10" y="10" width="280" height="180" rx="10" fill="none" stroke="#ffd700" stroke-width="2"/>
+  <text x="150" y="45" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="13" font-weight="bold">DOST REGION 1</text>
+  <text x="150" y="65" text-anchor="middle" fill="#ffd700" font-family="Arial, sans-serif" font-size="10">PSTO OFFICE</text>
+  <circle cx="150" cy="105" r="30" fill="none" stroke="#ffd700" stroke-width="2"/>
+  <text x="150" y="112" text-anchor="middle" fill="#ffd700" font-family="Arial, sans-serif" font-size="28">🌊</text>
+  <text x="150" y="155" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="16" font-weight="bold">PANGASINAN</text>
+  <text x="150" y="175" text-anchor="middle" fill="#b0c4de" font-family="Arial, sans-serif" font-size="11">Provincial Science & Technology Office</text>
+</svg>
+`);
+
+// Region 1 Summary Image
+const REGION_1_IMG = 'data:image/svg+xml,' + encodeURIComponent(`
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 200">
+  <defs>
+    <linearGradient id="grad5" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0a1a2a;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1a3c6e;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect width="300" height="200" rx="15" fill="url(#grad5)"/>
+  <rect x="10" y="10" width="280" height="180" rx="10" fill="none" stroke="#ffd700" stroke-width="2"/>
+  <text x="150" y="45" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="16" font-weight="bold">🏛️ DOST REGION 1</text>
+  <text x="150" y="65" text-anchor="middle" fill="#ffd700" font-family="Arial, sans-serif" font-size="11">Ilocos Region</text>
+  <line x1="80" y1="75" x2="220" y2="75" stroke="#ffd700" stroke-width="1" opacity="0.5"/>
+  <text x="150" y="100" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="12">📍 4 Provincial Offices</text>
+  <text x="150" y="120" text-anchor="middle" fill="#b0c4de" font-family="Arial, sans-serif" font-size="11">🔬 Science & Technology</text>
+  <text x="150" y="140" text-anchor="middle" fill="#b0c4de" font-family="Arial, sans-serif" font-size="11">🌪️ Disaster Risk Reduction</text>
+  <text x="150" y="160" text-anchor="middle" fill="#b0c4de" font-family="Arial, sans-serif" font-size="11">📊 Situational Reporting</text>
+  <text x="150" y="182" text-anchor="middle" fill="#ffd700" font-family="Arial, sans-serif" font-size="9">Region 1 Disaster Management Dashboard</text>
+</svg>
+`);
+
+// Map office keys to their images
+const OFFICE_IMAGE_MAP = {
+    'PSTO-Ilocos Norte': PSTO_ILOCOS_NORTE_IMG,
+    'PSTO-Ilocos Sur': PSTO_ILOCOS_SUR_IMG,
+    'PSTO-La Union': PSTO_LA_UNION_IMG,
+    'PSTO-Pangasinan': PSTO_PANGASINAN_IMG,
+};
 
 // ============================================================
 // CUSTOM HOOKS
@@ -159,6 +289,7 @@ const Dashboard = ({ onLogout, currentUser }) => {
                         equipment_details: merged[key]?.equipment_details || [],
                         affected_staff: merged[key]?.affected_staff || [],
                         municipalities: merged[key]?.municipalities || defaultOffice.municipalities || [],
+                        imageUrl: merged[key]?.imageUrl || OFFICE_IMAGE_MAP[key] || DOST_MASTER_LOGO,
                     };
                 });
                 return merged;
@@ -198,7 +329,7 @@ const Dashboard = ({ onLogout, currentUser }) => {
             const allOffices = Object.keys(DEFAULT_OFFICE_DATA);
             const hidden = {};
             allOffices.forEach(office => {
-                hidden[office] = false; // All visible by default
+                hidden[office] = false;
             });
             return hidden;
         });
@@ -403,7 +534,7 @@ const Dashboard = ({ onLogout, currentUser }) => {
                 [officeKey]: !prev[officeKey]
             }));
             const isHidden = !hiddenOffices[officeKey];
-            showToast(`${officeKey} ${isHidden ? 'hidden' : 'shown'}`, 'info');
+            showToast(`${officeKey.replace('PSTO-', '')} ${isHidden ? 'hidden' : 'shown'}`, 'info');
         }, [hiddenOffices, setHiddenOffices, showToast]);
 
         // --- Show All Offices ---
@@ -611,7 +742,8 @@ const Dashboard = ({ onLogout, currentUser }) => {
                         municipalities: [],
                         damage_details: [],
                         equipment_details: [],
-                        affected_staff: []
+                        affected_staff: [],
+                        imageUrl: REGION_1_IMG,
                     };
                 }
                 return officesData[selectedOffice] || {
@@ -635,7 +767,8 @@ const Dashboard = ({ onLogout, currentUser }) => {
                     municipalities: [],
                     damage_details: [],
                     equipment_details: [],
-                    affected_staff: []
+                    affected_staff: [],
+                    imageUrl: OFFICE_IMAGE_MAP[selectedOffice] || DOST_MASTER_LOGO,
                 };
             } catch (e) {
                 console.error('currentOfficeData error:', e);
@@ -730,7 +863,7 @@ const Dashboard = ({ onLogout, currentUser }) => {
                                         equipment_details: merged[key]?.equipment_details || [],
                                         affected_staff: merged[key]?.affected_staff || [],
                                         municipalities: merged[key]?.municipalities || defaultOffice.municipalities || [],
-                                        imageUrl: merged[key]?.imageUrl || prev[key]?.imageUrl || '',
+                                        imageUrl: merged[key]?.imageUrl || OFFICE_IMAGE_MAP[key] || prev[key]?.imageUrl || DOST_MASTER_LOGO,
                                     };
                                 });
                                 return merged;
@@ -899,7 +1032,7 @@ const Dashboard = ({ onLogout, currentUser }) => {
                     Object.keys(DEFAULT_OFFICE_DATA).forEach(office => {
                         resetData[office] = {
                             ...DEFAULT_OFFICE_DATA[office],
-                            imageUrl: prev[office]?.imageUrl || '',
+                            imageUrl: prev[office]?.imageUrl || OFFICE_IMAGE_MAP[office] || DOST_MASTER_LOGO,
                             municipalities: prev[office]?.municipalities || DEFAULT_OFFICE_DATA[office]?.municipalities || [],
                             warning_signals: {},
                             general_weather: '',
@@ -991,7 +1124,7 @@ const Dashboard = ({ onLogout, currentUser }) => {
                         damage_details: [...(currentOfficeData.damage_details || [])],
                         equipment_details: [...(currentOfficeData.equipment_details || [])],
                         affected_staff: [...(currentOfficeData.affected_staff || [])],
-                        imageUrl: currentOfficeData.imageUrl || ''
+                        imageUrl: currentOfficeData.imageUrl || OFFICE_IMAGE_MAP[selectedOffice] || DOST_MASTER_LOGO,
                     }));
                 }
                 setEditMode(!editMode);
@@ -1013,7 +1146,7 @@ const Dashboard = ({ onLogout, currentUser }) => {
                     damage_details: formData.damage_details || [],
                     equipment_details: formData.equipment_details || [],
                     affected_staff: formData.affected_staff || [],
-                    imageUrl: formData.imageUrl || currentOfficeData.imageUrl || ''
+                    imageUrl: formData.imageUrl || OFFICE_IMAGE_MAP[selectedOffice] || DOST_MASTER_LOGO,
                 };
 
                 setOfficesData(prev => ({
@@ -1028,7 +1161,7 @@ const Dashboard = ({ onLogout, currentUser }) => {
                 console.error('handleSave error:', e);
                 showToast('Failed to save data.', 'error');
             }
-        }, [selectedOffice, formData, currentOfficeData, setOfficesData, addNotification, showToast]);
+        }, [selectedOffice, formData, setOfficesData, addNotification, showToast]);
 
         // --- Office Image Handlers ---
         const handleOfficeImageChange = useCallback(async (e) => {
@@ -1058,7 +1191,7 @@ const Dashboard = ({ onLogout, currentUser }) => {
                 setFormData(prev => ({ ...prev, imageUrl: '' }));
                 setOfficesData(prev => ({
                     ...prev,
-                    [selectedOffice]: { ...prev[selectedOffice], imageUrl: '' }
+                    [selectedOffice]: { ...prev[selectedOffice], imageUrl: OFFICE_IMAGE_MAP[selectedOffice] || DOST_MASTER_LOGO }
                 }));
                 showToast('Image removed.', 'info');
             } catch (e) {
@@ -1339,7 +1472,7 @@ const Dashboard = ({ onLogout, currentUser }) => {
                     damage_details: [...(currentData.damage_details || [])],
                     equipment_details: [...(currentData.equipment_details || [])],
                     affected_staff: [...(currentData.affected_staff || [])],
-                    imageUrl: currentData.imageUrl || ''
+                    imageUrl: currentData.imageUrl || OFFICE_IMAGE_MAP[selectedOffice] || DOST_MASTER_LOGO,
                 });
                 toggleModal('report');
             } catch (e) {
@@ -1402,7 +1535,8 @@ const Dashboard = ({ onLogout, currentUser }) => {
                         municipalities: [...(report.data.municipalities || prev[report.office]?.municipalities || [])],
                         damage_details: [...(report.data.damage_details || prev[report.office]?.damage_details || [])],
                         equipment_details: [...(report.data.equipment_details || prev[report.office]?.equipment_details || [])],
-                        affected_staff: [...(report.data.affected_staff || prev[report.office]?.affected_staff || [])]
+                        affected_staff: [...(report.data.affected_staff || prev[report.office]?.affected_staff || [])],
+                        imageUrl: report.data.imageUrl || prev[report.office]?.imageUrl || OFFICE_IMAGE_MAP[report.office] || DOST_MASTER_LOGO,
                     }
                 }));
 
@@ -2497,10 +2631,8 @@ const Dashboard = ({ onLogout, currentUser }) => {
                     {/* Dashboard */}
                     {activeMenu === 'dashboard' && (
                         <div>
-                            {/* Toast Banner */}
                             <ToastBanner toast={toast} setToast={() => { }} />
 
-                            {/* Notification Widget */}
                             <NotificationWidget
                                 unreadCount={unreadCount}
                                 showNotificationsDropdown={modals.notifications}
@@ -2510,10 +2642,8 @@ const Dashboard = ({ onLogout, currentUser }) => {
                                 markNotificationRead={markNotificationRead}
                             />
 
-                            {/* Top Info Bar */}
                             <TopInfoBar activeEvent={activeEvent} displayWeather={displayWeather} />
 
-                            {/* Info Bar */}
                             <InfoBar
                                 displayWeather={displayWeather}
                                 activeEvent={activeEvent}
@@ -2522,7 +2652,6 @@ const Dashboard = ({ onLogout, currentUser }) => {
                                 getAlertColor={getAlertColor}
                             />
 
-                            {/* Notification Banner */}
                             <NotificationBanner
                                 activeEvent={activeEvent}
                                 handleGenerateReport={handleGenerateReport}
@@ -2530,10 +2659,10 @@ const Dashboard = ({ onLogout, currentUser }) => {
                                 handleExportExcel={handleExportExcel}
                             />
 
-                            {/* PSTO Selector with Hide/Show Controls */}
+                            {/* PSTO Controls */}
                             <div className="psto-controls">
                                 <div className="psto-controls-header">
-                                    <h3>PSTO Offices</h3>
+                                    <h3>📋 PSTO Offices</h3>
                                     <div className="psto-controls-actions">
                                         <span className="psto-count">
                                             {Object.keys(visibleOffices).length} of {Object.keys(officesData).length} visible
@@ -2541,12 +2670,12 @@ const Dashboard = ({ onLogout, currentUser }) => {
                                         </span>
                                         {hiddenCount > 0 && (
                                             <button className="show-all-btn" onClick={showAllOffices}>
-                                                Show All
+                                                👁️ Show All
                                             </button>
                                         )}
                                         {hiddenCount < Object.keys(officesData).length && (
                                             <button className="hide-all-btn" onClick={hideAllOffices}>
-                                                Hide All
+                                                👁️‍🗨️ Hide All
                                             </button>
                                         )}
                                     </div>
@@ -2585,12 +2714,607 @@ const Dashboard = ({ onLogout, currentUser }) => {
                                     </div>
                                     <div className="warning-card-body">
                                         {editMode ? (
-                                            // Edit mode content (same as before)
                                             <div className="improved-edit-form">
-                                                {/* ... edit form content ... */}
+                                                {/* Warning Signals Section */}
+                                                <div className="edit-section">
+                                                    <div className="edit-section-header" onClick={() => toggleSection('warningSignals')}>
+                                                        <h4>📡 Warning Signals</h4>
+                                                        <span>{expandedSections.warningSignals ? '▼' : '►'}</span>
+                                                    </div>
+                                                    {expandedSections.warningSignals && (
+                                                        <div className="edit-section-content">
+                                                            {municipalitiesList.map(mun => (
+                                                                <div key={mun} className="signal-edit-row">
+                                                                    <span className="municipality-name">{mun}</span>
+                                                                    <select
+                                                                        value={displayEvent.warning_signals?.[mun] || 0}
+                                                                        onChange={(e) => handleSignalChange(mun, e.target.value)}
+                                                                    >
+                                                                        <option value={0}>No Signal</option>
+                                                                        <option value={1}>Signal #1</option>
+                                                                        <option value={2}>Signal #2</option>
+                                                                        <option value={3}>Signal #3</option>
+                                                                        <option value={4}>Signal #4</option>
+                                                                        <option value={5}>Signal #5</option>
+                                                                    </select>
+                                                                    <button className="remove-mun-btn" onClick={() => handleRemoveMunicipality(mun)}>🗑️</button>
+                                                                </div>
+                                                            ))}
+                                                            <div className="add-municipality-row">
+                                                                <input
+                                                                    type="text"
+                                                                    placeholder="New municipality"
+                                                                    value={newMunicipality}
+                                                                    onChange={(e) => setNewMunicipality(e.target.value)}
+                                                                />
+                                                                <select
+                                                                    value={newSignal}
+                                                                    onChange={(e) => setNewSignal(parseInt(e.target.value))}
+                                                                >
+                                                                    <option value={1}>Signal #1</option>
+                                                                    <option value={2}>Signal #2</option>
+                                                                    <option value={3}>Signal #3</option>
+                                                                    <option value={4}>Signal #4</option>
+                                                                    <option value={5}>Signal #5</option>
+                                                                </select>
+                                                                <button className="add-mun-btn" onClick={handleAddMunicipality}>+ Add</button>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                {/* General Weather Section */}
+                                                <div className="edit-section">
+                                                    <div className="edit-section-header" onClick={() => toggleSection('generalWeather')}>
+                                                        <h4>🌤️ General Weather</h4>
+                                                        <span>{expandedSections.generalWeather ? '▼' : '►'}</span>
+                                                    </div>
+                                                    {expandedSections.generalWeather && (
+                                                        <div className="edit-section-content">
+                                                            <div className="form-group">
+                                                                <label>General Weather Situation</label>
+                                                                <input
+                                                                    type="text"
+                                                                    name="general_weather"
+                                                                    value={displayEvent.general_weather || ''}
+                                                                    onChange={(e) => handleReportFieldChange('general_weather', e.target.value)}
+                                                                    placeholder="e.g., Heavy Rain, Strong Winds"
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                {/* Effects Section */}
+                                                <div className="edit-section">
+                                                    <div className="edit-section-header" onClick={() => toggleSection('effects')}>
+                                                        <h4>📊 Effects</h4>
+                                                        <span>{expandedSections.effects ? '▼' : '►'}</span>
+                                                    </div>
+                                                    {expandedSections.effects && (
+                                                        <div className="edit-section-content">
+                                                            <div className="form-row">
+                                                                <div className="form-group">
+                                                                    <label>Related Incidents</label>
+                                                                    <input
+                                                                        type="number"
+                                                                        name="related_incidents"
+                                                                        value={displayEvent.related_incidents}
+                                                                        onChange={(e) => handleReportFieldChange('related_incidents', parseInt(e.target.value, 10) || 0)}
+                                                                    />
+                                                                </div>
+                                                                <div className="form-group">
+                                                                    <label>Remarks</label>
+                                                                    <input
+                                                                        type="text"
+                                                                        name="remark_related_incidents"
+                                                                        value={displayEvent.remark_related_incidents || ''}
+                                                                        onChange={(e) => handleReportFieldChange('remark_related_incidents', e.target.value)}
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                            <div className="form-row">
+                                                                <div className="form-group">
+                                                                    <label>Casualties</label>
+                                                                    <input
+                                                                        type="number"
+                                                                        name="casualties"
+                                                                        value={displayEvent.casualties}
+                                                                        onChange={(e) => handleReportFieldChange('casualties', parseInt(e.target.value, 10) || 0)}
+                                                                    />
+                                                                </div>
+                                                                <div className="form-group">
+                                                                    <label>Remarks</label>
+                                                                    <input
+                                                                        type="text"
+                                                                        name="remark_casualties"
+                                                                        value={displayEvent.remark_casualties || ''}
+                                                                        onChange={(e) => handleReportFieldChange('remark_casualties', e.target.value)}
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                            <div className="form-row">
+                                                                <div className="form-group">
+                                                                    <label>Power Status</label>
+                                                                    <input
+                                                                        type="text"
+                                                                        name="power_status"
+                                                                        value={displayEvent.power_status}
+                                                                        onChange={(e) => handleReportFieldChange('power_status', e.target.value)}
+                                                                    />
+                                                                </div>
+                                                                <div className="form-group">
+                                                                    <label>Remarks</label>
+                                                                    <input
+                                                                        type="text"
+                                                                        name="remark_power_status"
+                                                                        value={displayEvent.remark_power_status || ''}
+                                                                        onChange={(e) => handleReportFieldChange('remark_power_status', e.target.value)}
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                            <div className="form-row">
+                                                                <div className="form-group">
+                                                                    <label>Communication Lines</label>
+                                                                    <input
+                                                                        type="text"
+                                                                        name="communication_lines"
+                                                                        value={displayEvent.communication_lines}
+                                                                        onChange={(e) => handleReportFieldChange('communication_lines', e.target.value)}
+                                                                    />
+                                                                </div>
+                                                                <div className="form-group">
+                                                                    <label>Remarks</label>
+                                                                    <input
+                                                                        type="text"
+                                                                        name="remark_communication_lines"
+                                                                        value={displayEvent.remark_communication_lines || ''}
+                                                                        onChange={(e) => handleReportFieldChange('remark_communication_lines', e.target.value)}
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                            <div className="form-row">
+                                                                <div className="form-group">
+                                                                    <label>Damage to Facilities</label>
+                                                                    <input
+                                                                        type="text"
+                                                                        name="damage_facilities"
+                                                                        value={displayEvent.damage_facilities}
+                                                                        onChange={(e) => handleReportFieldChange('damage_facilities', e.target.value)}
+                                                                    />
+                                                                </div>
+                                                                <div className="form-group">
+                                                                    <label>Remarks</label>
+                                                                    <input
+                                                                        type="text"
+                                                                        name="remark_damage_facilities"
+                                                                        value={displayEvent.remark_damage_facilities || ''}
+                                                                        onChange={(e) => handleReportFieldChange('remark_damage_facilities', e.target.value)}
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                            <div className="form-row">
+                                                                <div className="form-group checkbox-group">
+                                                                    <label>
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            name="work_suspension"
+                                                                            checked={displayEvent.work_suspension}
+                                                                            onChange={(e) => handleReportFieldChange('work_suspension', e.target.checked)}
+                                                                        /> Work Suspension
+                                                                    </label>
+                                                                </div>
+                                                                <div className="form-group">
+                                                                    <label>Remarks</label>
+                                                                    <input
+                                                                        type="text"
+                                                                        name="remark_work_suspension"
+                                                                        value={displayEvent.remark_work_suspension || ''}
+                                                                        onChange={(e) => handleReportFieldChange('remark_work_suspension', e.target.value)}
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                            <div className="form-row">
+                                                                <div className="form-group">
+                                                                    <label>Assistance Provided</label>
+                                                                    <input
+                                                                        type="text"
+                                                                        name="assistance_provided"
+                                                                        value={displayEvent.assistance_provided}
+                                                                        onChange={(e) => handleReportFieldChange('assistance_provided', e.target.value)}
+                                                                    />
+                                                                </div>
+                                                                <div className="form-group">
+                                                                    <label>Remarks</label>
+                                                                    <input
+                                                                        type="text"
+                                                                        name="remark_assistance_provided"
+                                                                        value={displayEvent.remark_assistance_provided || ''}
+                                                                        onChange={(e) => handleReportFieldChange('remark_assistance_provided', e.target.value)}
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                {/* Damage Building Section */}
+                                                <div className="edit-section">
+                                                    <div className="edit-section-header" onClick={() => toggleSection('damageDetails')}>
+                                                        <h4>🏗️ Damage Building</h4>
+                                                        <span>{expandedSections.damageDetails ? '▼' : '►'}</span>
+                                                    </div>
+                                                    {expandedSections.damageDetails && (
+                                                        <div className="edit-section-content">
+                                                            <div className="damage-form">
+                                                                <div className="form-row">
+                                                                    <div className="form-group">
+                                                                        <label>Damage Description</label>
+                                                                        <input
+                                                                            type="text"
+                                                                            value={newDamage.description}
+                                                                            onChange={(e) => setNewDamage({ ...newDamage, description: e.target.value })}
+                                                                            placeholder="e.g., Building collapsed"
+                                                                        />
+                                                                    </div>
+                                                                    <div className="form-group">
+                                                                        <label>Cost (₱)</label>
+                                                                        <input
+                                                                            type="number"
+                                                                            value={newDamage.cost}
+                                                                            onChange={(e) => setNewDamage({ ...newDamage, cost: e.target.value })}
+                                                                            placeholder="0"
+                                                                        />
+                                                                    </div>
+                                                                </div>
+                                                                <div className="form-row">
+                                                                    <div className="form-group">
+                                                                        <label>Status</label>
+                                                                        <select
+                                                                            value={newDamage.status}
+                                                                            onChange={(e) => setNewDamage({ ...newDamage, status: e.target.value })}
+                                                                        >
+                                                                            <option>Reported</option>
+                                                                            <option>Assessing</option>
+                                                                            <option>Under Repair</option>
+                                                                            <option>Repaired</option>
+                                                                            <option>Condemned</option>
+                                                                        </select>
+                                                                    </div>
+                                                                    <div className="form-group">
+                                                                        <label>Image</label>
+                                                                        <input
+                                                                            type="file"
+                                                                            accept="image/*"
+                                                                            onChange={(e) => {
+                                                                                const file = e.target.files[0];
+                                                                                if (file) {
+                                                                                    const reader = new FileReader();
+                                                                                    reader.onload = () => setNewDamage({ ...newDamage, image: reader.result });
+                                                                                    reader.readAsDataURL(file);
+                                                                                }
+                                                                            }}
+                                                                        />
+                                                                    </div>
+                                                                </div>
+                                                                {newDamage.image && (
+                                                                    <div className="image-preview">
+                                                                        <img src={newDamage.image} alt="Damage preview" className="preview-thumbnail" />
+                                                                        <button className="remove-image-btn" onClick={() => setNewDamage({ ...newDamage, image: null })}>✕</button>
+                                                                    </div>
+                                                                )}
+                                                                <div className="form-buttons">
+                                                                    {editingDamageIndex !== null ? (
+                                                                        <button className="success" onClick={handleUpdateDamage}>Update Damage</button>
+                                                                    ) : (
+                                                                        <button className="add-mun-btn" onClick={handleAddDamage}>+ Add Damage</button>
+                                                                    )}
+                                                                    {editingDamageIndex !== null && (
+                                                                        <button onClick={() => {
+                                                                            setEditingDamageIndex(null);
+                                                                            setNewDamage(EMPTY_DAMAGE);
+                                                                        }}>Cancel</button>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                            <div className="damage-list">
+                                                                {(formData?.damage_details || []).map((damage, index) => (
+                                                                    <div key={index} className="damage-item">
+                                                                        <div className="damage-info">
+                                                                            <strong>{damage.description}</strong>
+                                                                            <span>₱{damage.cost || 0}</span>
+                                                                            <span className={`status-badge ${damage.status ? damage.status.toLowerCase().replace(/\s+/g, '-') : 'reported'}`}>
+                                                                                {damage.status}
+                                                                            </span>
+                                                                            {damage.image && (
+                                                                                <img
+                                                                                    src={damage.image}
+                                                                                    alt="Damage"
+                                                                                    className="damage-thumbnail"
+                                                                                    onClick={() => openImageModal(damage.image)}
+                                                                                />
+                                                                            )}
+                                                                        </div>
+                                                                        <div className="damage-actions">
+                                                                            <button className="view-btn" onClick={() => handleEditDamage(index)}>✏️</button>
+                                                                            <button className="danger" onClick={() => handleDeleteDamage(index)}>🗑️</button>
+                                                                        </div>
+                                                                    </div>
+                                                                ))}
+                                                                {(formData?.damage_details || []).length === 0 && (
+                                                                    <p className="no-items">No damage records added.</p>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                {/* Equipment Section */}
+                                                <div className="edit-section">
+                                                    <div className="edit-section-header" onClick={() => toggleSection('equipmentDetails')}>
+                                                        <h4>🛠️ Damage Equipment</h4>
+                                                        <span>{expandedSections.equipmentDetails ? '▼' : '►'}</span>
+                                                    </div>
+                                                    {expandedSections.equipmentDetails && (
+                                                        <div className="edit-section-content">
+                                                            <div className="damage-form">
+                                                                <div className="form-row">
+                                                                    <div className="form-group">
+                                                                        <label>Equipment Name</label>
+                                                                        <input
+                                                                            type="text"
+                                                                            value={newEquipment.name}
+                                                                            onChange={(e) => setNewEquipment({ ...newEquipment, name: e.target.value })}
+                                                                            placeholder="e.g., Generator"
+                                                                        />
+                                                                    </div>
+                                                                    <div className="form-group">
+                                                                        <label>Cost (₱)</label>
+                                                                        <input
+                                                                            type="number"
+                                                                            value={newEquipment.cost}
+                                                                            onChange={(e) => setNewEquipment({ ...newEquipment, cost: e.target.value })}
+                                                                            placeholder="0"
+                                                                        />
+                                                                    </div>
+                                                                </div>
+                                                                <div className="form-row">
+                                                                    <div className="form-group">
+                                                                        <label>Description</label>
+                                                                        <input
+                                                                            type="text"
+                                                                            value={newEquipment.description}
+                                                                            onChange={(e) => setNewEquipment({ ...newEquipment, description: e.target.value })}
+                                                                            placeholder="e.g., Portable radio"
+                                                                        />
+                                                                    </div>
+                                                                </div>
+                                                                <div className="form-row">
+                                                                    <div className="form-group">
+                                                                        <label>Status</label>
+                                                                        <select
+                                                                            value={newEquipment.status}
+                                                                            onChange={(e) => setNewEquipment({ ...newEquipment, status: e.target.value })}
+                                                                        >
+                                                                            <option>Reported</option>
+                                                                            <option>Assessing</option>
+                                                                            <option>Under Repair</option>
+                                                                            <option>Repaired</option>
+                                                                            <option>Condemned</option>
+                                                                        </select>
+                                                                    </div>
+                                                                    <div className="form-group">
+                                                                        <label>Image</label>
+                                                                        <input
+                                                                            type="file"
+                                                                            accept="image/*"
+                                                                            onChange={(e) => {
+                                                                                const file = e.target.files[0];
+                                                                                if (file) {
+                                                                                    const reader = new FileReader();
+                                                                                    reader.onload = () => setNewEquipment({ ...newEquipment, image: reader.result });
+                                                                                    reader.readAsDataURL(file);
+                                                                                }
+                                                                            }}
+                                                                        />
+                                                                    </div>
+                                                                </div>
+                                                                {newEquipment.image && (
+                                                                    <div className="image-preview">
+                                                                        <img src={newEquipment.image} alt="Equipment preview" className="preview-thumbnail" />
+                                                                        <button className="remove-image-btn" onClick={() => setNewEquipment({ ...newEquipment, image: null })}>✕</button>
+                                                                    </div>
+                                                                )}
+                                                                <div className="form-buttons">
+                                                                    {editingEquipmentIndex !== null ? (
+                                                                        <button className="success" onClick={handleUpdateEquipment}>Update Equipment</button>
+                                                                    ) : (
+                                                                        <button className="add-mun-btn" onClick={handleAddEquipment}>+ Add Equipment</button>
+                                                                    )}
+                                                                    {editingEquipmentIndex !== null && (
+                                                                        <button onClick={() => {
+                                                                            setEditingEquipmentIndex(null);
+                                                                            setNewEquipment(EMPTY_EQUIPMENT);
+                                                                        }}>Cancel</button>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                            <div className="damage-list">
+                                                                {(formData?.equipment_details || []).map((equip, index) => (
+                                                                    <div key={index} className="damage-item">
+                                                                        <div className="damage-info">
+                                                                            <strong>{equip.name}</strong>
+                                                                            <span>{equip.description}</span>
+                                                                            <span>₱{equip.cost || 0}</span>
+                                                                            <span className={`status-badge ${equip.status ? equip.status.toLowerCase().replace(/\s+/g, '-') : 'reported'}`}>
+                                                                                {equip.status}
+                                                                            </span>
+                                                                            {equip.image && (
+                                                                                <img
+                                                                                    src={equip.image}
+                                                                                    alt="Equipment"
+                                                                                    className="damage-thumbnail"
+                                                                                    onClick={() => openImageModal(equip.image)}
+                                                                                />
+                                                                            )}
+                                                                        </div>
+                                                                        <div className="damage-actions">
+                                                                            <button className="view-btn" onClick={() => handleEditEquipment(index)}>✏️</button>
+                                                                            <button className="danger" onClick={() => handleDeleteEquipment(index)}>🗑️</button>
+                                                                        </div>
+                                                                    </div>
+                                                                ))}
+                                                                {(formData?.equipment_details || []).length === 0 && (
+                                                                    <p className="no-items">No equipment records added.</p>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                {/* Staff Section */}
+                                                <div className="edit-section">
+                                                    <div className="edit-section-header" onClick={() => toggleSection('affectedStaff')}>
+                                                        <h4>👥 Affected Staff</h4>
+                                                        <span>{expandedSections.affectedStaff ? '▼' : '►'}</span>
+                                                    </div>
+                                                    {expandedSections.affectedStaff && (
+                                                        <div className="edit-section-content">
+                                                            <div className="staff-form">
+                                                                <div className="form-row">
+                                                                    <div className="form-group">
+                                                                        <label>Name</label>
+                                                                        <input
+                                                                            type="text"
+                                                                            value={newStaff.name}
+                                                                            onChange={(e) => setNewStaff({ ...newStaff, name: e.target.value })}
+                                                                            placeholder="Staff name"
+                                                                        />
+                                                                    </div>
+                                                                    <div className="form-group">
+                                                                        <label>Area</label>
+                                                                        <input
+                                                                            type="text"
+                                                                            value={newStaff.area}
+                                                                            onChange={(e) => setNewStaff({ ...newStaff, area: e.target.value })}
+                                                                            placeholder="Area/Location"
+                                                                        />
+                                                                    </div>
+                                                                </div>
+                                                                <div className="form-row">
+                                                                    <div className="form-group">
+                                                                        <label>Assistance Given</label>
+                                                                        <input
+                                                                            type="text"
+                                                                            value={newStaff.assistance}
+                                                                            onChange={(e) => setNewStaff({ ...newStaff, assistance: e.target.value })}
+                                                                            placeholder="e.g., Food pack, Medical"
+                                                                        />
+                                                                    </div>
+                                                                    <div className="form-group">
+                                                                        <label>Status</label>
+                                                                        <select
+                                                                            value={newStaff.status}
+                                                                            onChange={(e) => setNewStaff({ ...newStaff, status: e.target.value })}
+                                                                        >
+                                                                            <option>Active</option>
+                                                                            <option>Injured</option>
+                                                                            <option>Evacuated</option>
+                                                                            <option>Rescued</option>
+                                                                            <option>Deceased</option>
+                                                                        </select>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="form-buttons">
+                                                                    {editingStaffIndex !== null ? (
+                                                                        <button className="success" onClick={handleUpdateStaff}>Update Staff</button>
+                                                                    ) : (
+                                                                        <button className="add-mun-btn" onClick={handleAddStaff}>+ Add Staff</button>
+                                                                    )}
+                                                                    {editingStaffIndex !== null && (
+                                                                        <button onClick={() => {
+                                                                            setEditingStaffIndex(null);
+                                                                            setNewStaff(EMPTY_STAFF);
+                                                                        }}>Cancel</button>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                            <div className="staff-list">
+                                                                {(formData?.affected_staff || []).map((staff, index) => (
+                                                                    <div key={index} className="staff-item">
+                                                                        <div className="staff-info">
+                                                                            <strong>{staff.name}</strong>
+                                                                            <span>{staff.area}</span>
+                                                                            <span>Assistance: {staff.assistance || 'None'}</span>
+                                                                            <span className={`status-badge ${staff.status ? staff.status.toLowerCase().replace(/\s+/g, '-') : 'active'}`}>
+                                                                                {staff.status}
+                                                                            </span>
+                                                                        </div>
+                                                                        <div className="staff-actions">
+                                                                            <button className="view-btn" onClick={() => handleEditStaff(index)}>✏️</button>
+                                                                            <button className="danger" onClick={() => handleDeleteStaff(index)}>🗑️</button>
+                                                                        </div>
+                                                                    </div>
+                                                                ))}
+                                                                {(formData?.affected_staff || []).length === 0 && (
+                                                                    <p className="no-items">No staff records added.</p>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                {/* Image Section */}
+                                                <div className="edit-section">
+                                                    <div className="edit-section-header" onClick={() => toggleSection('officeImage')}>
+                                                        <h4>🖼️ Office Image</h4>
+                                                        <span>{expandedSections.officeImage ? '▼' : '►'}</span>
+                                                    </div>
+                                                    {expandedSections.officeImage && (
+                                                        <div className="edit-section-content">
+                                                            <div className="form-group">
+                                                                <label>Upload Office Image</label>
+                                                                <input type="file" accept="image/*" onChange={handleOfficeImageChange} />
+                                                                {formData?.imageUrl && (
+                                                                    <div style={{ marginTop: '10px' }}>
+                                                                        <img
+                                                                            src={formData.imageUrl}
+                                                                            alt="Office"
+                                                                            style={{ maxWidth: '200px', maxHeight: '150px', borderRadius: '8px', border: '1px solid #ddd' }}
+                                                                        />
+                                                                        <button onClick={handleRemoveOfficeImage} style={{ marginLeft: '10px', padding: '4px 10px' }}>
+                                                                            Remove
+                                                                        </button>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                {/* Remarks Section */}
+                                                <div className="edit-section">
+                                                    <div className="edit-section-header" onClick={() => toggleSection('remarks')}>
+                                                        <h4>📝 General Remarks</h4>
+                                                        <span>{expandedSections.remarks ? '▼' : '►'}</span>
+                                                    </div>
+                                                    {expandedSections.remarks && (
+                                                        <div className="edit-section-content">
+                                                            <div className="form-group">
+                                                                <label>Overall Remarks</label>
+                                                                <textarea
+                                                                    name="remark"
+                                                                    value={displayEvent.remark || ''}
+                                                                    onChange={(e) => handleReportFieldChange('remark', e.target.value)}
+                                                                    rows="3"
+                                                                    placeholder="Additional notes or instructions..."
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
                                         ) : (
-                                            // View mode content (same as before)
                                             <>
                                                 <div className="warning-grid">
                                                     <div className="warning-grid-row header">
@@ -3078,7 +3802,7 @@ const Dashboard = ({ onLogout, currentUser }) => {
                     )}
                 </div>
 
-                {/* Modals - Same as before */}
+                {/* Modals */}
                 <EventDetailsModal
                     isOpen={modals.details}
                     onClose={() => toggleModal('details')}
