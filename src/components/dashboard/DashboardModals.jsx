@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 export const UserModal = ({
     isOpen,
@@ -132,76 +132,149 @@ export const SettingsModal = ({
 }) => {
     if (!isOpen) return null;
 
+    const [activeSection, setActiveSection] = useState('general');
+
+    const sectionMeta = {
+        general: {
+            title: 'General Settings',
+            description: 'Manage core system behavior and default values.'
+        },
+        appearance: {
+            title: 'Appearance',
+            description: 'Adjust interface and visual preferences.'
+        },
+        notifications: {
+            title: 'Notifications',
+            description: 'Control alert and notification behavior.'
+        },
+        maintenance: {
+            title: 'Maintenance',
+            description: 'Back up, restore, and reset system data.'
+        },
+        advanced: {
+            title: 'Advanced',
+            description: 'Reserved for future advanced configuration modules.'
+        }
+    };
+
     return (
         <div className="modal-overlay" onClick={onClose}>
-            <div className="modal-content large-modal" onClick={(e) => e.stopPropagation()}>
-                <div className="modal-header">
-                    <h3>⚙️ System Settings</h3>
+            <div className="modal-content profile-settings-modal" onClick={(e) => e.stopPropagation()}>
+                <div className="profile-settings-header">
+                    <div>
+                        <h3>Settings & Profile</h3>
+                        <p>System configuration panel</p>
+                    </div>
                     <button className="modal-close" onClick={onClose}>×</button>
                 </div>
-                <div className="settings-grid">
-                    <div className="settings-group">
-                        <h4>General Settings</h4>
-                        <div className="settings-item-row">
-                            <label>System Name</label>
-                            <input type="text" value={settingsData.systemName} onChange={(e) => setSettingsData({ ...settingsData, systemName: e.target.value })} />
+                <div className="profile-settings-layout">
+                    <aside className="profile-settings-sidebar">
+                        {[
+                            { key: 'general', label: 'General' },
+                            { key: 'appearance', label: 'Appearance' },
+                            { key: 'notifications', label: 'Notifications' },
+                            { key: 'maintenance', label: 'Maintenance' },
+                            { key: 'advanced', label: 'Advanced' }
+                        ].map((item) => (
+                            <button
+                                key={item.key}
+                                className={`profile-nav-item ${activeSection === item.key ? 'active' : ''}`}
+                                onClick={() => setActiveSection(item.key)}
+                                type="button"
+                            >
+                                {item.label}
+                            </button>
+                        ))}
+                    </aside>
+
+                    <section className="profile-settings-content">
+                        <div className="profile-settings-section-head">
+                            <h4>{sectionMeta[activeSection].title}</h4>
+                            <p>{sectionMeta[activeSection].description}</p>
                         </div>
-                        <div className="settings-item-row">
-                            <label>Default Alert Level</label>
-                            <select value={settingsData.defaultAlertLevel} onChange={(e) => setSettingsData({ ...settingsData, defaultAlertLevel: e.target.value })}>
-                                <option>RED</option><option>BLUE</option><option>WHITE</option>
-                            </select>
+
+                        {activeSection === 'general' && (
+                            <div className="settings-group">
+                                <div className="settings-item-row">
+                                    <label>System Name</label>
+                                    <input type="text" value={settingsData.systemName} onChange={(e) => setSettingsData({ ...settingsData, systemName: e.target.value })} />
+                                </div>
+                                <div className="settings-item-row">
+                                    <label>Default Alert Level</label>
+                                    <select value={settingsData.defaultAlertLevel} onChange={(e) => setSettingsData({ ...settingsData, defaultAlertLevel: e.target.value })}>
+                                        <option>RED</option><option>BLUE</option><option>WHITE</option>
+                                    </select>
+                                </div>
+                                <div className="settings-item-row">
+                                    <label>Auto Archive Days</label>
+                                    <input
+                                        type="number"
+                                        value={settingsData.autoArchiveDays}
+                                        onChange={(e) => setSettingsData({ ...settingsData, autoArchiveDays: parseInt(e.target.value, 10) || 7 })}
+                                        min="1"
+                                        max="30"
+                                    />
+                                </div>
+                            </div>
+                        )}
+
+                        {activeSection === 'appearance' && (
+                            <div className="settings-group">
+                                <div className="settings-item-row">
+                                    <label>Dark Mode</label>
+                                    <input
+                                        type="checkbox"
+                                        checked={settingsData.darkMode}
+                                        onChange={(e) => {
+                                            setSettingsData({ ...settingsData, darkMode: e.target.checked });
+                                            document.body.classList.toggle('dark-mode', e.target.checked);
+                                        }}
+                                    />
+                                </div>
+                            </div>
+                        )}
+
+                        {activeSection === 'notifications' && (
+                            <div className="settings-group">
+                                <div className="settings-item-row">
+                                    <label>Enable Notification Sound</label>
+                                    <input
+                                        type="checkbox"
+                                        checked={settingsData.notificationSound}
+                                        onChange={(e) => setSettingsData({ ...settingsData, notificationSound: e.target.checked })}
+                                    />
+                                </div>
+                            </div>
+                        )}
+
+                        {activeSection === 'maintenance' && (
+                            <div className="settings-group">
+                                <div className="settings-item-row">
+                                    <button onClick={exportData}>Export All Data</button>
+                                    <label className="import-btn" style={{ marginLeft: '10px' }}>
+                                        <input type="file" onChange={importData} style={{ display: 'none' }} />
+                                        Import Data
+                                    </label>
+                                </div>
+                                <div className="settings-item-row">
+                                    <button className="danger" onClick={resetToDefaultData}>Reset to Default</button>
+                                </div>
+                            </div>
+                        )}
+
+                        {activeSection === 'advanced' && (
+                            <div className="settings-group">
+                                <div className="settings-placeholder">
+                                    Additional advanced options can be added here.
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="modal-buttons">
+                            <button className="success" onClick={onSaveSettings}>Save Settings</button>
+                            <button className="modal-close-footer-btn" onClick={onClose}>Close</button>
                         </div>
-                        <div className="settings-item-row">
-                            <label>Auto Archive Days</label>
-                            <input
-                                type="number"
-                                value={settingsData.autoArchiveDays}
-                                onChange={(e) => setSettingsData({ ...settingsData, autoArchiveDays: parseInt(e.target.value, 10) || 7 })}
-                                min="1"
-                                max="30"
-                            />
-                        </div>
-                    </div>
-                    <div className="settings-group">
-                        <h4>Notification Settings</h4>
-                        <div className="settings-item-row">
-                            <label>Enable Notification Sound</label>
-                            <input
-                                type="checkbox"
-                                checked={settingsData.notificationSound}
-                                onChange={(e) => setSettingsData({ ...settingsData, notificationSound: e.target.checked })}
-                            />
-                        </div>
-                        <div className="settings-item-row">
-                            <label>Dark Mode</label>
-                            <input
-                                type="checkbox"
-                                checked={settingsData.darkMode}
-                                onChange={(e) => {
-                                    setSettingsData({ ...settingsData, darkMode: e.target.checked });
-                                    document.body.classList.toggle('dark-mode', e.target.checked);
-                                }}
-                            />
-                        </div>
-                    </div>
-                    <div className="settings-group">
-                        <h4>Data Management</h4>
-                        <div className="settings-item-row">
-                            <button onClick={exportData}>📤 Export All Data</button>
-                            <label className="import-btn" style={{ marginLeft: '10px' }}>
-                                <input type="file" onChange={importData} style={{ display: 'none' }} />
-                                📥 Import Data
-                            </label>
-                        </div>
-                        <div className="settings-item-row">
-                            <button className="danger" onClick={resetToDefaultData}>⚠️ Reset to Default</button>
-                        </div>
-                    </div>
-                </div>
-                <div className="modal-buttons">
-                    <button className="success" onClick={onSaveSettings}>Save Settings</button>
-                    <button className="modal-close-footer-btn" onClick={onClose}>Close</button>
+                    </section>
                 </div>
             </div>
         </div>
@@ -377,6 +450,25 @@ export const ReportSubmissionModal = ({
                                         <option>Reported</option><option>Assessing</option><option>Under Repair</option><option>Repaired</option><option>Condemned</option>
                                     </select>
                                 </div>
+                                <div className="form-group">
+                                    <label>Photo</label>
+                                    <label className="img-upload-label">
+                                        <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => {
+                                            const file = e.target.files[0];
+                                            if (!file) return;
+                                            const reader = new FileReader();
+                                            reader.onload = () => setReportNewDamage(prev => ({ ...prev, image: reader.result }));
+                                            reader.readAsDataURL(file);
+                                            e.target.value = '';
+                                        }} />
+                                        {reportNewDamage.image
+                                            ? <img src={reportNewDamage.image} alt="preview" className="img-upload-preview" />
+                                            : <span className="img-upload-placeholder">📷 Upload</span>}
+                                    </label>
+                                    {reportNewDamage.image && (
+                                        <button type="button" className="img-remove-btn" onClick={() => setReportNewDamage(prev => ({ ...prev, image: null }))}>✕ Remove</button>
+                                    )}
+                                </div>
                             </div>
                             <div className="form-buttons">
                                 {editingReportDamageIndex !== null ? (
@@ -385,7 +477,7 @@ export const ReportSubmissionModal = ({
                                     <button className="add-mun-btn" onClick={handleReportAddDamage}>+ Add</button>
                                 )}
                                 {editingReportDamageIndex !== null && (
-                                    <button onClick={() => { setEditingReportDamageIndex(null); setReportNewDamage({ description: '', cost: '', status: 'Reported' }); }}>
+                                    <button onClick={() => { setEditingReportDamageIndex(null); setReportNewDamage({ description: '', cost: '', status: 'Reported', image: null }); }}>
                                         Cancel
                                     </button>
                                 )}
@@ -394,6 +486,7 @@ export const ReportSubmissionModal = ({
                         <div className="damage-list">
                             {(reportFormData?.damage_details || []).map((damage, index) => (
                                 <div key={index} className="damage-item">
+                                    {damage.image && <img src={damage.image} alt="damage" className="damage-item-thumb" />}
                                     <div className="damage-info">
                                         <strong>{damage.description}</strong>
                                         <span>₱{damage.cost || 0}</span>
@@ -423,6 +516,27 @@ export const ReportSubmissionModal = ({
                                     </select>
                                 </div>
                             </div>
+                            <div className="form-row">
+                                <div className="form-group">
+                                    <label>Photo</label>
+                                    <label className="img-upload-label">
+                                        <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => {
+                                            const file = e.target.files[0];
+                                            if (!file) return;
+                                            const reader = new FileReader();
+                                            reader.onload = () => setReportNewEquipment(prev => ({ ...prev, image: reader.result }));
+                                            reader.readAsDataURL(file);
+                                            e.target.value = '';
+                                        }} />
+                                        {reportNewEquipment.image
+                                            ? <img src={reportNewEquipment.image} alt="preview" className="img-upload-preview" />
+                                            : <span className="img-upload-placeholder">📷 Upload</span>}
+                                    </label>
+                                    {reportNewEquipment.image && (
+                                        <button type="button" className="img-remove-btn" onClick={() => setReportNewEquipment(prev => ({ ...prev, image: null }))}>✕ Remove</button>
+                                    )}
+                                </div>
+                            </div>
                             <div className="form-buttons">
                                 {editingReportEquipmentIndex !== null ? (
                                     <button className="success" onClick={handleReportUpdateEquipment}>Update</button>
@@ -430,7 +544,7 @@ export const ReportSubmissionModal = ({
                                     <button className="add-mun-btn" onClick={handleReportAddEquipment}>+ Add</button>
                                 )}
                                 {editingReportEquipmentIndex !== null && (
-                                    <button onClick={() => { setEditingReportEquipmentIndex(null); setReportNewEquipment({ name: '', description: '', cost: '', status: 'Reported' }); }}>
+                                    <button onClick={() => { setEditingReportEquipmentIndex(null); setReportNewEquipment({ name: '', description: '', cost: '', status: 'Reported', image: null }); }}>
                                         Cancel
                                     </button>
                                 )}
@@ -439,6 +553,7 @@ export const ReportSubmissionModal = ({
                         <div className="damage-list">
                             {(reportFormData?.equipment_details || []).map((equip, index) => (
                                 <div key={index} className="damage-item">
+                                    {equip.image && <img src={equip.image} alt="equipment" className="damage-item-thumb" />}
                                     <div className="damage-info">
                                         <strong>{equip.name}</strong>
                                         <span>{equip.description}</span>

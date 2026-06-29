@@ -34,6 +34,8 @@ export const dbService = {
   async saveNotifications(notifications) { return await apiCall('/notifications', 'POST', notifications); },
   async getActiveMenu() { const result = await apiCall('/active-menu'); return result?.menu || 'dashboard'; },
   async saveActiveMenu(menu) { return await apiCall('/active-menu', 'POST', { menu }); },
+  async getTyphoonHistory() { return await apiCall('/typhoon-history'); },
+  async saveTyphoonHistory(history) { return await apiCall('/typhoon-history', 'POST', history); },
   async syncAllData(data) { return await apiCall('/sync-all', 'POST', data); }
 };
 

@@ -19,11 +19,12 @@ services:
       - .:/app
       - /app/node_modules
     environment:
-      - NODE_ENV=production
-      - DB_HOST=your_actual_database_host_here
-      - DB_PORT=18750
+      - NODE_ENV=development
+      - DATABASE_URL=postgres://avnadmin:AVNS_KDnWpvaIZYYBAojZYZV@pg-d9b811c-raigana362-999a.b.aivencloud.com:22998/defaultdb?sslmode=require
+      - DB_HOST=pg-d9b811c-raigana362-999a.b.aivencloud.com
+      - DB_PORT=22998
       - DB_USER=avnadmin
-      - DB_PASSWORD=AVNS_iAhIWlZIisjJZ9ztt9-
+      - DB_PASSWORD=AVNS_KDnWpvaIZYYBAojZYZV
       - DB_NAME=defaultdb
     env_file:
       - .env
@@ -46,10 +47,10 @@ services:
       - /app/node_modules
     environment:
       - NODE_ENV=development
-      - BROWSER=none          # Prevent opening browser tab inside container
-      - WDS_SOCKET_PORT=3000  # Hot-reloading socket port
-    stdin_open: true          # Keeps the react-scripts terminal active
-    tty: true                 # Connects standard input/output channels
+      - BROWSER=none # Prevent opening browser tab inside container
+      - WDS_SOCKET_PORT=3000 # Hot-reloading socket port
+    stdin_open: true # Keeps the react-scripts terminal active
+    tty: true # Connects standard input/output channels
     depends_on:
       - backend
     networks:

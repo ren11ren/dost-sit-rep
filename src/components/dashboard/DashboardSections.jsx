@@ -178,7 +178,23 @@ const loadFromStorage = (key, defaultValue) => {
     return defaultValue;
 };
 
-const saveToStorage = (key, data) => localStorage.setItem(key, JSON.stringify(data));
+const saveToStorage = (key, data) => {
+    try {
+        localStorage.setItem(key, JSON.stringify(data));
+    } catch (e) {
+        // QuotaExceededError — storage is full (usually caused by large base64 images)
+        // Try clearing only the stale/heavy keys before retrying once
+        if (e.name === 'QuotaExceededError' || e.code === 22) {
+            try {
+                // Remove the previous value for this key to make room
+                localStorage.removeItem(key);
+                localStorage.setItem(key, JSON.stringify(data));
+            } catch (_) {
+                console.warn('saveToStorage: still over quota after clear, skipping key:', key);
+            }
+        }
+    }
+};
 
 const archiveOldEvents = (events) => {
     const sevenDaysAgo = new Date();
@@ -518,6 +534,22 @@ const OfficeModal = ({
                 <div className="detail-section">
                     <div className="detail-section-title">Quick Summary</div>
                     <div className="summary-grid">
+                        <div className="summary-card summary-card-total summary-card-total-building">
+                            <span className="summary-card-label">Building Damage Cost</span>
+                            <span className="summary-card-value">
+                                ₱{(Array.isArray(currentOfficeData.damage_details) ? currentOfficeData.damage_details : [])
+                                    .reduce((sum, item) => sum + (parseFloat(item.cost) || 0), 0)
+                                    .toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </span>
+                        </div>
+                        <div className="summary-card summary-card-total summary-card-total-equipment">
+                            <span className="summary-card-label">Equipment Damage Cost</span>
+                            <span className="summary-card-value">
+                                ₱{(Array.isArray(currentOfficeData.equipment_details) ? currentOfficeData.equipment_details : [])
+                                    .reduce((sum, item) => sum + (parseFloat(item.cost) || 0), 0)
+                                    .toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </span>
+                        </div>
                         <div className="summary-card">
                             <span className="summary-card-label">Damage Building</span>
                             <span className="summary-card-value">{Array.isArray(currentOfficeData.damage_details) ? currentOfficeData.damage_details.length : '0'} record(s)</span>
@@ -535,61 +567,90 @@ const OfficeModal = ({
 
                 <div className="detail-section">
                     <div className="detail-section-title">Damage Building</div>
-                    <div className="summary-panel">
-                        {Array.isArray(currentOfficeData.damage_details) && currentOfficeData.damage_details.length > 0 ? (
-                            <div className="summary-list">
+                    {Array.isArray(currentOfficeData.damage_details) && currentOfficeData.damage_details.length > 0 ? (
+                        <table className="summary-table">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Description</th>
+                                    <th>Cost (₱)</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
                                 {currentOfficeData.damage_details.map((damage, idx) => (
-                                    <div key={damage.id || idx} className="summary-list-item">
-                                        <span className="summary-list-title">{damage.description || 'No description'}</span>
-                                        <span>Cost: ₱{damage.cost || 0}</span>
-                                        <span>Status: {damage.status || 'Reported'}</span>
-                                    </div>
+                                    <tr key={damage.id || idx}>
+                                        <td>{idx + 1}</td>
+                                        <td>{damage.description || 'No description'}</td>
+                                        <td>{(parseFloat(damage.cost) || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                        <td><span className={`status-badge status-${(damage.status || 'reported').toLowerCase().replace(/\s+/g, '-')}`}>{damage.status || 'Reported'}</span></td>
+                                    </tr>
                                 ))}
-                            </div>
-                        ) : (
-                            <p>No damage records reported.</p>
-                        )}
-                    </div>
+                            </tbody>
+                        </table>
+                    ) : (
+                        <p className="summary-empty">No damage records reported.</p>
+                    )}
                 </div>
 
                 <div className="detail-section">
                     <div className="detail-section-title">Equipment Damage</div>
-                    <div className="summary-panel">
-                        {Array.isArray(currentOfficeData.equipment_details) && currentOfficeData.equipment_details.length > 0 ? (
-                            <div className="summary-list">
+                    {Array.isArray(currentOfficeData.equipment_details) && currentOfficeData.equipment_details.length > 0 ? (
+                        <table className="summary-table">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Name</th>
+                                    <th>Description</th>
+                                    <th>Cost (₱)</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
                                 {currentOfficeData.equipment_details.map((equip, idx) => (
-                                    <div key={equip.id || idx} className="summary-list-item">
-                                        <span className="summary-list-title">{equip.name || 'No name'}</span>
-                                        <span>{equip.description || ''}</span>
-                                        <span>Cost: ₱{equip.cost || 0}</span>
-                                        <span>Status: {equip.status || 'Reported'}</span>
-                                    </div>
+                                    <tr key={equip.id || idx}>
+                                        <td>{idx + 1}</td>
+                                        <td>{equip.name || 'No name'}</td>
+                                        <td>{equip.description || '—'}</td>
+                                        <td>{(parseFloat(equip.cost) || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                        <td><span className={`status-badge status-${(equip.status || 'reported').toLowerCase().replace(/\s+/g, '-')}`}>{equip.status || 'Reported'}</span></td>
+                                    </tr>
                                 ))}
-                            </div>
-                        ) : (
-                            <p>No equipment damage records reported.</p>
-                        )}
-                    </div>
+                            </tbody>
+                        </table>
+                    ) : (
+                        <p className="summary-empty">No equipment damage records reported.</p>
+                    )}
                 </div>
 
                 <div className="detail-section">
                     <div className="detail-section-title">Affected Staff</div>
-                    <div className="summary-panel">
-                        {Array.isArray(currentOfficeData.affected_staff) && currentOfficeData.affected_staff.length > 0 ? (
-                            <div className="summary-list">
+                    {Array.isArray(currentOfficeData.affected_staff) && currentOfficeData.affected_staff.length > 0 ? (
+                        <table className="summary-table">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Name</th>
+                                    <th>Area</th>
+                                    <th>Assistance</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
                                 {currentOfficeData.affected_staff.map((staff, idx) => (
-                                    <div key={staff.id || idx} className="summary-list-item">
-                                        <span className="summary-list-title">{staff.name || 'Unknown staff'}</span>
-                                        <span>Area: {staff.area || 'Not specified'}</span>
-                                        <span>Assistance: {staff.assistance || 'None'}</span>
-                                        <span>Status: {staff.status || 'Active'}</span>
-                                    </div>
+                                    <tr key={staff.id || idx}>
+                                        <td>{idx + 1}</td>
+                                        <td>{staff.name || 'Unknown'}</td>
+                                        <td>{staff.area || 'Not specified'}</td>
+                                        <td>{staff.assistance || 'None'}</td>
+                                        <td><span className={`status-badge status-${(staff.status || 'active').toLowerCase().replace(/\s+/g, '-')}`}>{staff.status || 'Active'}</span></td>
+                                    </tr>
                                 ))}
-                            </div>
-                        ) : (
-                            <p>No affected staff reported.</p>
-                        )}
-                    </div>
+                            </tbody>
+                        </table>
+                    ) : (
+                        <p className="summary-empty">No affected staff reported.</p>
+                    )}
                 </div>
 
                 <div className="detail-section">
@@ -1123,62 +1184,317 @@ const EventDetailsModal = ({
 };
 
 // ===== TYPHOON HISTORY CONTENT =====
-const TyphoonHistoryContent = ({ typhoonHistory, searchTerm, setSearchTerm, handleSearchChange, setSelectedEvent, setShowDetailsModal, getAlertColor }) => (
-    <div className="events-management">
-        <div className="events-header">
-            <h1>📜 Typhoon History</h1>
-            <div className="header-actions">
-                <div className="search-box-enhanced">
-                    <span className="search-icon">🔍</span>
-                    <input
-                        type="text"
-                        placeholder="Search history..."
-                        value={searchTerm}
-                        onChange={handleSearchChange}
-                        className="search-input-enhanced"
-                    />
-                    {searchTerm && (
-                        <button className="search-clear" onClick={() => setSearchTerm('')}>✕</button>
+const HistoryEventCard = ({ event, getAlertColor, setSelectedEvent, setShowDetailsModal }) => {
+    const [expanded, setExpanded] = React.useState(false);
+    const snapshot = event.officesSnapshot || {};
+    const officeKeys = Object.keys(snapshot).filter(k => k !== 'PSTO-Region-1');
+
+    const totalBuildingCost = officeKeys.reduce((sum, k) =>
+        sum + (snapshot[k]?.damage_details || []).reduce((s, d) => s + (parseFloat(d.cost) || 0), 0), 0);
+    const totalEquipCost = officeKeys.reduce((sum, k) =>
+        sum + (snapshot[k]?.equipment_details || []).reduce((s, d) => s + (parseFloat(d.cost) || 0), 0), 0);
+    const totalStaff = officeKeys.reduce((sum, k) =>
+        sum + (snapshot[k]?.affected_staff || []).length, 0);
+    const totalCasualties = officeKeys.reduce((sum, k) =>
+        sum + (parseInt(snapshot[k]?.casualties) || 0), 0);
+
+    const fmtPeso = (n) => '₱' + n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    return (
+        <div className={`hist-card ${expanded ? 'hist-card-open' : ''}`}>
+            {/* ── Card header ── */}
+            <div className="hist-card-header" onClick={() => setExpanded(v => !v)}>
+                <div className="hist-card-title-group">
+                    <span className="hist-card-name">{event.name}</span>
+                    <span className="alert-badge" style={{ background: getAlertColor(event.alertLevel), marginLeft: 8 }}>
+                        {event.alertLevel || '—'}
+                    </span>
+                    <span className="hist-card-cat">{event.category || ''}</span>
+                </div>
+                <div className="hist-card-meta">
+                    <span>{event.date}</span>
+                    {event.archivedAt && (
+                        <span className="hist-card-archived">
+                            Archived {new Date(event.archivedAt).toLocaleDateString()}
+                        </span>
                     )}
+                    <span className="hist-chevron">{expanded ? '▲' : '▼'}</span>
                 </div>
             </div>
-        </div>
-        <div className="events-subtitle">Complete history of all typhoons and tropical cyclones</div>
-        <div className="events-table-container">
-            <table className="events-table">
-                <thead>
-                    <tr>
-                        <th>Event Name</th>
-                        <th>Category</th>
-                        <th>Alert Level</th>
-                        <th>Date</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {typhoonHistory.length > 0 ? typhoonHistory.map(event => (
-                        <tr
-                            key={event.id}
-                            onClick={() => {
-                                setSelectedEvent(event);
-                                setShowDetailsModal(true);
-                            }}
-                            className="history-row-clickable"
-                        >
-                            <td className="event-name">{event.name}</td>
-                            <td>{event.category || '—'}</td>
-                            <td><span className="alert-badge" style={{ background: getAlertColor(event.alertLevel) }}>{event.alertLevel}</span></td>
-                            <td>{event.date}</td>
-                            <td><span className="status-badge" style={{ background: '#6c757d' }}>Archived</span></td>
-                        </tr>
-                    )) : (
-                        <tr><td colSpan="5" style={{ textAlign: 'center', padding: '40px' }}>No typhoon history available.</td></tr>
+
+            {/* ── Summary strip ── */}
+            <div className="hist-summary-strip">
+                <div className="hist-stat">
+                    <span className="hist-stat-label">Building Damage</span>
+                    <span className="hist-stat-value hist-stat-orange">{fmtPeso(totalBuildingCost)}</span>
+                </div>
+                <div className="hist-stat">
+                    <span className="hist-stat-label">Equipment Damage</span>
+                    <span className="hist-stat-value hist-stat-green">{fmtPeso(totalEquipCost)}</span>
+                </div>
+                <div className="hist-stat">
+                    <span className="hist-stat-label">Total Damage</span>
+                    <span className="hist-stat-value hist-stat-blue">{fmtPeso(totalBuildingCost + totalEquipCost)}</span>
+                </div>
+                <div className="hist-stat">
+                    <span className="hist-stat-label">Casualties</span>
+                    <span className="hist-stat-value">{totalCasualties}</span>
+                </div>
+                <div className="hist-stat">
+                    <span className="hist-stat-label">Affected Staff</span>
+                    <span className="hist-stat-value">{totalStaff}</span>
+                </div>
+                <button className="hist-detail-btn" onClick={() => { setSelectedEvent(event); setShowDetailsModal(true); }}>
+                    View Details
+                </button>
+            </div>
+
+            {/* ── Expanded PSTO breakdown ── */}
+            {expanded && (
+                <div className="hist-body">
+                    {officeKeys.length === 0 ? (
+                        <p className="hist-empty">No PSTO snapshot available for this event.</p>
+                    ) : officeKeys.map(office => {
+                        const d = snapshot[office] || {};
+                        const bCost = (d.damage_details || []).reduce((s, x) => s + (parseFloat(x.cost) || 0), 0);
+                        const eCost = (d.equipment_details || []).reduce((s, x) => s + (parseFloat(x.cost) || 0), 0);
+                        const hasDamage = (d.damage_details || []).length > 0;
+                        const hasEquip = (d.equipment_details || []).length > 0;
+                        const hasStaff = (d.affected_staff || []).length > 0;
+
+                        return (
+                            <div key={office} className="hist-office-block">
+                                <div className="hist-office-header">
+                                    <span className="hist-office-name">{office}</span>
+                                    <div className="hist-office-costs">
+                                        {bCost > 0 && <span className="hist-cost-tag hist-cost-orange">Bldg: {fmtPeso(bCost)}</span>}
+                                        {eCost > 0 && <span className="hist-cost-tag hist-cost-green">Equip: {fmtPeso(eCost)}</span>}
+                                        {bCost === 0 && eCost === 0 && <span className="hist-cost-tag">No damage recorded</span>}
+                                    </div>
+                                </div>
+
+                                {/* Effects row */}
+                                <div className="hist-effects-row">
+                                    {[
+                                        { label: 'Casualties', val: d.casualties || 0 },
+                                        { label: 'Power', val: d.power_status || '—' },
+                                        { label: 'Communication', val: d.communication_lines || '—' },
+                                        { label: 'Work Suspension', val: d.work_suspension ? 'Yes' : 'No' },
+                                    ].map(item => (
+                                        <div key={item.label} className="hist-effect-chip">
+                                            <span className="hist-effect-label">{item.label}</span>
+                                            <span className="hist-effect-val">{item.val}</span>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {/* Damage Building table */}
+                                {hasDamage && (
+                                    <div className="hist-sub-section">
+                                        <div className="hist-sub-title">Damage Building</div>
+                                        <table className="summary-table">
+                                            <thead><tr><th>#</th><th>Description</th><th>Cost (₱)</th><th>Status</th></tr></thead>
+                                            <tbody>
+                                                {d.damage_details.map((item, i) => (
+                                                    <tr key={i}>
+                                                        <td>{i + 1}</td>
+                                                        <td>{item.description || '—'}</td>
+                                                        <td>{fmtPeso(parseFloat(item.cost) || 0)}</td>
+                                                        <td><span className={`status-badge status-${(item.status || 'reported').toLowerCase().replace(/\s+/g, '-')}`}>{item.status || 'Reported'}</span></td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
+
+                                {/* Equipment Damage table */}
+                                {hasEquip && (
+                                    <div className="hist-sub-section">
+                                        <div className="hist-sub-title">Equipment Damage</div>
+                                        <table className="summary-table">
+                                            <thead><tr><th>#</th><th>Name</th><th>Description</th><th>Cost (₱)</th><th>Status</th></tr></thead>
+                                            <tbody>
+                                                {d.equipment_details.map((item, i) => (
+                                                    <tr key={i}>
+                                                        <td>{i + 1}</td>
+                                                        <td>{item.name || '—'}</td>
+                                                        <td>{item.description || '—'}</td>
+                                                        <td>{fmtPeso(parseFloat(item.cost) || 0)}</td>
+                                                        <td><span className={`status-badge status-${(item.status || 'reported').toLowerCase().replace(/\s+/g, '-')}`}>{item.status || 'Reported'}</span></td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
+
+                                {/* Affected Staff table */}
+                                {hasStaff && (
+                                    <div className="hist-sub-section">
+                                        <div className="hist-sub-title">Affected Staff</div>
+                                        <table className="summary-table">
+                                            <thead><tr><th>#</th><th>Name</th><th>Area</th><th>Assistance</th><th>Status</th></tr></thead>
+                                            <tbody>
+                                                {d.affected_staff.map((item, i) => (
+                                                    <tr key={i}>
+                                                        <td>{i + 1}</td>
+                                                        <td>{item.name || '—'}</td>
+                                                        <td>{item.area || '—'}</td>
+                                                        <td>{item.assistance || 'None'}</td>
+                                                        <td><span className={`status-badge status-${(item.status || 'active').toLowerCase().replace(/\s+/g, '-')}`}>{item.status || 'Active'}</span></td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
+
+                                {!hasDamage && !hasEquip && !hasStaff && (
+                                    <p className="hist-empty">No damage or staff records for this office.</p>
+                                )}
+                            </div>
+                        );
+                    })}
+
+                    {/* ── Event PSTO Total row ── */}
+                    {officeKeys.length > 0 && (
+                        <div className="hist-psto-total-row">
+                            <div className="hist-psto-total-label">Event PSTO Total</div>
+                            <div className="hist-psto-total-stats">
+                                <div className="hist-psto-total-stat">
+                                    <span className="hist-psto-total-key">Building Damage</span>
+                                    <span className="hist-psto-total-val hist-stat-orange">{fmtPeso(totalBuildingCost)}</span>
+                                </div>
+                                <div className="hist-psto-total-stat">
+                                    <span className="hist-psto-total-key">Equipment Damage</span>
+                                    <span className="hist-psto-total-val hist-stat-green">{fmtPeso(totalEquipCost)}</span>
+                                </div>
+                                <div className="hist-psto-total-stat">
+                                    <span className="hist-psto-total-key">Combined Damage</span>
+                                    <span className="hist-psto-total-val hist-stat-blue">{fmtPeso(totalBuildingCost + totalEquipCost)}</span>
+                                </div>
+                                <div className="hist-psto-total-stat">
+                                    <span className="hist-psto-total-key">Casualties</span>
+                                    <span className="hist-psto-total-val">{totalCasualties}</span>
+                                </div>
+                                <div className="hist-psto-total-stat">
+                                    <span className="hist-psto-total-key">Affected Staff</span>
+                                    <span className="hist-psto-total-val">{totalStaff}</span>
+                                </div>
+                            </div>
+                        </div>
                     )}
-                </tbody>
-            </table>
+                </div>
+            )}
         </div>
-    </div>
-);
+    );
+};
+
+const TyphoonHistoryContent = ({ typhoonHistory, searchTerm, setSearchTerm, handleSearchChange, setSelectedEvent, setShowDetailsModal, getAlertColor }) => {
+    const filtered = (typhoonHistory || []).filter(e =>
+        !searchTerm || e.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        e.category?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    const fmtPeso = (n) => '₱' + n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    // Cumulative totals across ALL archived events (not filtered, so always shows full picture)
+    const allEvents = typhoonHistory || [];
+    const getOfficeKeys = (snap) => Object.keys(snap || {}).filter(k => k !== 'PSTO-Region-1');
+    const cumBuilding = allEvents.reduce((sum, e) => {
+        const snap = e.officesSnapshot || {};
+        return sum + getOfficeKeys(snap).reduce((s, k) =>
+            s + (snap[k]?.damage_details || []).reduce((ss, d) => ss + (parseFloat(d.cost) || 0), 0), 0);
+    }, 0);
+    const cumEquip = allEvents.reduce((sum, e) => {
+        const snap = e.officesSnapshot || {};
+        return sum + getOfficeKeys(snap).reduce((s, k) =>
+            s + (snap[k]?.equipment_details || []).reduce((ss, d) => ss + (parseFloat(d.cost) || 0), 0), 0);
+    }, 0);
+    const cumCasualties = allEvents.reduce((sum, e) => {
+        const snap = e.officesSnapshot || {};
+        return sum + getOfficeKeys(snap).reduce((s, k) => s + (parseInt(snap[k]?.casualties) || 0), 0);
+    }, 0);
+    const cumStaff = allEvents.reduce((sum, e) => {
+        const snap = e.officesSnapshot || {};
+        return sum + getOfficeKeys(snap).reduce((s, k) => s + (snap[k]?.affected_staff || []).length, 0);
+    }, 0);
+
+    return (
+        <div className="events-management">
+            <div className="events-header">
+                <h1>📜 Typhoon History</h1>
+                <div className="header-actions">
+                    <div className="search-box-enhanced">
+                        <span className="search-icon">🔍</span>
+                        <input
+                            type="text"
+                            placeholder="Search history..."
+                            value={searchTerm}
+                            onChange={handleSearchChange}
+                            className="search-input-enhanced"
+                        />
+                        {searchTerm && <button className="search-clear" onClick={() => setSearchTerm('')}>✕</button>}
+                    </div>
+                </div>
+            </div>
+
+            {/* ── Cumulative Summary Card ── */}
+            {allEvents.length > 0 && (
+                <div className="hist-cumulative-card">
+                    <div className="hist-cumulative-title">
+                        <span className="hist-cumulative-icon">📊</span>
+                        Cumulative Summary
+                        <span className="hist-cumulative-badge">{allEvents.length} event{allEvents.length !== 1 ? 's' : ''} total</span>
+                    </div>
+                    <div className="hist-cumulative-stats">
+                        <div className="hist-cum-stat hist-cum-orange">
+                            <span className="hist-cum-label">Grand Total Building Damage</span>
+                            <span className="hist-cum-value">{fmtPeso(cumBuilding)}</span>
+                        </div>
+                        <div className="hist-cum-stat hist-cum-green">
+                            <span className="hist-cum-label">Grand Total Equipment Damage</span>
+                            <span className="hist-cum-value">{fmtPeso(cumEquip)}</span>
+                        </div>
+                        <div className="hist-cum-stat hist-cum-blue">
+                            <span className="hist-cum-label">Combined Total Damage</span>
+                            <span className="hist-cum-value">{fmtPeso(cumBuilding + cumEquip)}</span>
+                        </div>
+                        <div className="hist-cum-stat hist-cum-red">
+                            <span className="hist-cum-label">Total Casualties</span>
+                            <span className="hist-cum-value">{cumCasualties}</span>
+                        </div>
+                        <div className="hist-cum-stat hist-cum-purple">
+                            <span className="hist-cum-label">Total Affected Staff</span>
+                            <span className="hist-cum-value">{cumStaff}</span>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <div className="events-subtitle">
+                {filtered.length} archived event{filtered.length !== 1 ? 's' : ''} — click a card to expand PSTO damage breakdown
+            </div>
+
+            {filtered.length === 0 ? (
+                <div className="hist-empty-state">No typhoon history available yet.<br />Events will appear here after a new event is deployed.</div>
+            ) : (
+                <div className="hist-list">
+                    {filtered.map(event => (
+                        <HistoryEventCard
+                            key={event.id}
+                            event={event}
+                            getAlertColor={getAlertColor}
+                            setSelectedEvent={setSelectedEvent}
+                            setShowDetailsModal={setShowDetailsModal}
+                        />
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
 
 // ============================================
 // MAIN DASHBOARD COMPONENT
