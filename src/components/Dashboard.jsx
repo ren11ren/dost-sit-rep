@@ -10,6 +10,7 @@ import {
     RejectEventModal,
     ReportReviewModal,
     ReportSubmissionModal,
+    ReportRejectModal,
     SettingsModal,
     UserModal
 } from './dashboard/DashboardModals';
@@ -194,6 +195,8 @@ const OFFICE_IMAGE_MAP = {
     'PSTO-Ilocos Sur': PSTO_ILOCOS_SUR_IMG,
     'PSTO-La Union': PSTO_LA_UNION_IMG,
     'PSTO-Pangasinan': PSTO_PANGASINAN_IMG,
+    'PSTO-Ilocos Sur - FO': PSTO_ILOCOS_SUR_IMG,
+    'PSTO-Pangasinan - FO': PSTO_PANGASINAN_IMG,
 };
 
 // ============================================================
@@ -378,6 +381,7 @@ const Dashboard = ({ onLogout, currentUser }) => {
             reject: false,
             report: false,
             reportReview: false,
+            reportReject: false,
             settings: false,
             user: false,
             image: false,
@@ -525,6 +529,15 @@ const Dashboard = ({ onLogout, currentUser }) => {
                 return event.deployment || 'Draft';
             } catch (e) {
                 return 'Unknown';
+            }
+        }, []);
+
+        const formatDateTime = useCallback((value, fallback = 'Unknown date') => {
+            try {
+                const date = new Date(value);
+                return isNaN(date.getTime()) ? fallback : date.toLocaleString();
+            } catch (e) {
+                return fallback;
             }
         }, []);
 
@@ -897,7 +910,23 @@ const Dashboard = ({ onLogout, currentUser }) => {
                     }
                     if (hasEvents) setEvents(archiveOldEvents(payload.events));
                     if (hasUsers) setUsers(payload.users);
-                    if (hasReports) setPendingReports(payload.reports);
+                    if (hasReports) {
+                        // Normalize server report shape to client expectations
+                        const normalized = (payload.reports || []).map(r => ({
+                            id: r.id || r.ID || null,
+                            office: r.office || r.office_name || r.office || '',
+                            submittedBy: r.submitted_by || r.submittedBy || r.submittedBy || '',
+                            submittedAt: (() => {
+                                const raw = r.submitted_at || r.submittedAt || r.created_at || new Date().toISOString();
+                                const parsed = new Date(raw);
+                                return isNaN(parsed.getTime()) ? new Date().toISOString() : parsed.toISOString();
+                            })(),
+                            status: r.status || 'pending',
+                            remarks: r.remarks || r.remark || '',
+                            data: r.data || r.report_data || (r.report_data ? (typeof r.report_data === 'string' ? JSON.parse(r.report_data) : r.report_data) : {})
+                        }));
+                        setPendingReports(normalized);
+                    }
                     if (hasNotifications) setNotifications(payload.notifications);
                     if (typeof payload?.activeMenu === 'string' && payload.activeMenu.trim()) setActiveMenu(payload.activeMenu);
                     if (Array.isArray(payload?.typhoonHistory) && payload.typhoonHistory.length > 0) {
@@ -1529,6 +1558,26 @@ const Dashboard = ({ onLogout, currentUser }) => {
                 };
 
                 setPendingReports(prev => [newReport, ...prev]);
+                // Persist pending reports to backend immediately and trigger a sync push
+                (async () => {
+                    try {
+                        // Save pending reports list on server
+                        const serverReports = Array.isArray(await dbService.getPendingReports()) ? await dbService.getPendingReports() : [];
+                        const merged = [newReport, ...serverReports.filter(r => r.id !== newReport.id)];
+                        await dbService.savePendingReports(merged);
+
+                        // Trigger a sync push so other clients pulling the server will receive updates quickly
+                        try {
+                            const localTs = Date.now();
+                            await dbService.syncAllData({ officesData, events, users, pendingReports: merged, notifications, activeMenu, typhoonHistory, _localTs: localTs });
+                        } catch (syncErr) {
+                            // Not critical; others will pick up via polling
+                            console.warn('syncAllData warning:', syncErr);
+                        }
+                    } catch (e) {
+                        console.error('submitReport persistence error:', e);
+                    }
+                })();
                 toggleModal('report');
                 setReportFormData(null);
 
@@ -1540,7 +1589,7 @@ const Dashboard = ({ onLogout, currentUser }) => {
             }
         }, [reportFormData, selectedOffice, currentUser, setPendingReports, toggleModal, addNotification, showToast]);
 
-        const approveReport = useCallback((reportId) => {
+        const approveReport = useCallback(async (reportId) => {
             try {
                 const report = pendingReports.find(r => r.id === reportId);
                 if (!report) {
@@ -1562,36 +1611,83 @@ const Dashboard = ({ onLogout, currentUser }) => {
                     }
                 }));
 
-                setPendingReports(prev => prev.map(r =>
+                const updatedReports = pendingReports.map(r =>
                     r.id === reportId ? { ...r, status: 'approved' } : r
-                ));
+                );
+
+                setPendingReports(updatedReports);
+                setSelectedReport(prev => prev?.id === reportId ? { ...prev, status: 'approved' } : prev);
 
                 addNotification('Report Approved', `Report from ${report.office} was approved and applied.`, 'success');
                 showToast(`Report for ${report.office} approved and applied.`, 'success');
+
+                try {
+                    await dbService.savePendingReports(updatedReports);
+                    const localTs = Date.now();
+                    await dbService.syncAllData({ officesData, events, users, pendingReports: updatedReports, notifications, activeMenu, typhoonHistory, _localTs: localTs });
+                } catch (syncError) {
+                    console.warn('Approve report persistence warning:', syncError);
+                }
             } catch (e) {
                 console.error('approveReport error:', e);
                 showToast('Failed to approve report.', 'error');
             }
-        }, [pendingReports, setOfficesData, setPendingReports, addNotification, showToast]);
+        }, [pendingReports, setOfficesData, setPendingReports, setSelectedReport, officesData, events, users, notifications, activeMenu, typhoonHistory, addNotification, showToast]);
 
-        const handleRejectReport = useCallback((reportId, reason) => {
+        const handleRejectReport = useCallback(async (reportId, reason) => {
             try {
                 if (!reason || !reason.trim()) {
                     showToast('Please provide a rejection reason.', 'warning');
                     return;
                 }
 
-                setPendingReports(prev => prev.map(r =>
+                const updatedReports = pendingReports.map(r =>
                     r.id === reportId ? { ...r, status: 'rejected', remarks: reason } : r
-                ));
+                );
 
-                const report = pendingReports.find(r => r.id === reportId);
+                setPendingReports(updatedReports);
+                setSelectedReport(prev => prev?.id === reportId ? { ...prev, status: 'rejected', remarks: reason } : prev);
+
+                const report = updatedReports.find(r => r.id === reportId);
                 addNotification('Report Rejected', `Report from ${report?.office || 'Unknown office'} was rejected. Reason: ${reason}`, 'error');
                 showToast('Report rejected.', 'error');
+
+                try {
+                    await dbService.savePendingReports(updatedReports);
+                    const localTs = Date.now();
+                    await dbService.syncAllData({ officesData, events, users, pendingReports: updatedReports, notifications, activeMenu, typhoonHistory, _localTs: localTs });
+                } catch (syncError) {
+                    console.warn('Reject report persistence warning:', syncError);
+                }
             } catch (e) {
                 console.error('handleRejectReport error:', e);
             }
-        }, [pendingReports, setPendingReports, addNotification, showToast]);
+        }, [pendingReports, setPendingReports, setSelectedReport, officesData, events, users, notifications, activeMenu, typhoonHistory, addNotification, showToast]);
+
+        const openRejectReportModal = useCallback((report) => {
+            try {
+                if (!report) return;
+                setSelectedReport(report);
+                setReportRejectReason('');
+                setModals(prev => ({
+                    ...prev,
+                    reportReview: false,
+                    reportReject: true,
+                }));
+            } catch (e) {
+                console.error('openRejectReportModal error:', e);
+            }
+        }, []);
+
+        const confirmRejectReport = useCallback(() => {
+            if (!selectedReport) {
+                showToast('No report selected.', 'error');
+                return;
+            }
+            handleRejectReport(selectedReport.id, reportRejectReason);
+            setReportRejectReason('');
+            setModals(prev => ({ ...prev, reportReject: false }));
+        }, [selectedReport, reportRejectReason, handleRejectReport, showToast]);
 
         // --- Report Form Handlers ---
         const handleReportFieldChange = useCallback((field, value) => {
@@ -3828,15 +3924,11 @@ const Dashboard = ({ onLogout, currentUser }) => {
                                             <tr key={report.id}>
                                                 <td>{report.office}</td>
                                                 <td>{report.submittedBy}</td>
-                                                <td>{new Date(report.submittedAt).toLocaleString()}</td>
+                                                <td>{formatDateTime(report.submittedAt, 'Unknown Date')}</td>
                                                 <td><span className="status-badge" style={{ background: '#ffc107' }}>Pending</span></td>
                                                 <td className="actions-cell">
                                                     <button className="success" onClick={() => approveReport(report.id)}>Approve</button>
-                                                    <button className="danger" onClick={() => {
-                                                        setSelectedReport(report);
-                                                        setReportRejectReason('');
-                                                        toggleModal('reportReview');
-                                                    }}>Reject</button>
+                                                    <button className="danger" onClick={() => openRejectReportModal(report)}>Reject</button>
                                                     <button className="view-btn" onClick={() => {
                                                         setSelectedReport(report);
                                                         toggleModal('reportReview');
@@ -3986,9 +4078,19 @@ const Dashboard = ({ onLogout, currentUser }) => {
                     selectedReport={selectedReport}
                     officesData={officesData}
                     approveReport={approveReport}
-                    openRejectReportModal={() => {
-                        toggleModal('reportReview');
+                    openRejectReportModal={openRejectReportModal}
+                />
+
+                <ReportRejectModal
+                    isOpen={modals.reportReject}
+                    onClose={() => {
+                        setReportRejectReason('');
+                        toggleModal('reportReject');
                     }}
+                    selectedReport={selectedReport}
+                    rejectReason={reportRejectReason}
+                    setRejectReason={setReportRejectReason}
+                    confirmRejectReport={confirmRejectReport}
                 />
 
                 <SettingsModal
@@ -4236,6 +4338,7 @@ const Dashboard = ({ onLogout, currentUser }) => {
                     setUserForm={setUserForm}
                     isSuperAdmin={isSuperAdmin}
                     handleSaveUser={handleSaveUser}
+                    officeOptions={Object.keys(officesData || {})}
                 />
             </div>
         );

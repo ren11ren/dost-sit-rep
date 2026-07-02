@@ -1374,14 +1374,6 @@ textarea {
   background: linear-gradient(135deg, #3a1a5c, #6a2d9f) !important;
 }
 
-.psto-selector-card:not(.has-image)[data-office="PSTO-Ilocos Sur - FO"] {
-  background: linear-gradient(135deg, #1a4a4a, #2d6a6a) !important;
-}
-
-.psto-selector-card:not(.has-image)[data-office="PSTO-Pangasinan - FO"] {
-  background: linear-gradient(135deg, #4a1a4a, #6a2d6a) !important;
-}
-
 .psto-selector-card:not(.has-image)[data-office="PSTO-Region-1"] {
   background: linear-gradient(135deg, #2d3748, #4a5568) !important;
 }

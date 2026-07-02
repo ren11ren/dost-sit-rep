@@ -162,11 +162,7 @@ const DEFAULT_USERS = [
     { id: 5, name: 'Pangasinan User', email: 'user-pangasinan@dostregion1.ph', office: 'PSTO-Pangasinan', role: 'USER', status: 'Active', password: 'user123', profileImage: '' },
     { id: 6, name: 'Ilocos Sur User', email: 'user-ilocossur2@dostregion1.ph', office: 'PSTO-Ilocos Sur', role: 'USER', status: 'Active', password: 'user123', profileImage: '' },
     { id: 7, name: 'Ilocos Norte User', email: 'user-ilocosnorte@dostregion1.ph', office: 'PSTO-Ilocos Norte', role: 'USER', status: 'Active', password: 'user123', profileImage: '' },
-    { id: 8, name: 'Ilocos Sur FO Admin', email: 'admin-ilocossur-fo@dostregion1.ph', office: 'PSTO-Ilocos Sur - FO', role: 'ADMIN', status: 'Active', password: 'admin123', profileImage: '' },
-    { id: 9, name: 'Ilocos Sur FO User', email: 'user-ilocossur-fo@dostregion1.ph', office: 'PSTO-Ilocos Sur - FO', role: 'USER', status: 'Active', password: 'user123', profileImage: '' },
-    { id: 10, name: 'Pangasinan FO Admin', email: 'admin-pangasinan-fo@dostregion1.ph', office: 'PSTO-Pangasinan - FO', role: 'ADMIN', status: 'Active', password: 'admin123', profileImage: '' },
-    { id: 11, name: 'Pangasinan FO User', email: 'user-pangasinan-fo@dostregion1.ph', office: 'PSTO-Pangasinan - FO', role: 'USER', status: 'Active', password: 'user123', profileImage: '' },
-    { id: 12, name: 'Ilocos Sur User 3', email: 'user-ilocossur3@dostregion1.ph', office: 'PSTO-Ilocos Sur', role: 'USER', status: 'Active', password: 'user123', profileImage: '' },
+    { id: 8, name: 'Ilocos Sur User 3', email: 'user-ilocossur3@dostregion1.ph', office: 'PSTO-Ilocos Sur', role: 'USER', status: 'Active', password: 'user123', profileImage: '' },
 ];
 
 // Helper functions
@@ -1211,6 +1207,10 @@ const EventDetailsModal = ({
         setShowRejectModal(false);
     };
 
+    const fmtPeso = (n) => '₱' + Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const snapshot = getHistorySnapshot(selectedEvent);
+    const snapshotKeys = Object.keys(snapshot).filter(k => k !== 'PSTO-Region-1');
+
     return (
         <>
             <div className="modal-overlay" onClick={handleOverlayClick}>
@@ -1349,6 +1349,28 @@ const EventDetailsModal = ({
                             </div>
                         </div>
                     )}
+                    {snapshotKeys.length > 0 && (
+                        <div className="detail-section">
+                            <div className="detail-section-title">🏢 PSTO Snapshot</div>
+                            <div className="snapshot-grid">
+                                {snapshotKeys.map((office) => {
+                                    const officeData = snapshot[office] || {};
+                                    const totals = getHistoryTotalsFromSource(officeData);
+                                    return (
+                                        <div key={office} className="snapshot-office-card">
+                                            <div className="snapshot-office-title">{office}</div>
+                                            <div className="snapshot-office-values">
+                                                <div><strong>Building</strong>: {fmtPeso(totals.buildingCost)}</div>
+                                                <div><strong>Equipment</strong>: {fmtPeso(totals.equipmentCost)}</div>
+                                                <div><strong>Staff</strong>: {totals.staffCount}</div>
+                                                <div><strong>Casualties</strong>: {totals.casualtyCount}</div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
                     {selectedEvent.rejectionReason && (
                         <div className="rejection-reason">
                             <strong>Rejection reason:</strong> {selectedEvent.rejectionReason}
@@ -1381,7 +1403,7 @@ const EventDetailsModal = ({
 
 // ===== TYPHOON HISTORY CONTENT =====
 const HistoryEventCard = ({ event, getAlertColor, setSelectedEvent, setShowDetailsModal }) => {
-    const [expanded, setExpanded] = React.useState(false);
+    const [showSnapshot, setShowSnapshot] = React.useState(false);
     const snapshot = getHistorySnapshot(event);
     const officeKeys = Object.keys(snapshot).filter(k => k !== 'PSTO-Region-1');
     const historyTotals = getHistoryTotals(event);
@@ -1390,8 +1412,8 @@ const HistoryEventCard = ({ event, getAlertColor, setSelectedEvent, setShowDetai
     const fmtPeso = (n) => '₱' + n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
     return (
-        <div className={`hist-card ${expanded ? 'hist-card-open' : ''}`}>
-            <div className="hist-card-header" onClick={() => setExpanded(v => !v)}>
+        <div className={`hist-card ${showSnapshot ? 'hist-card-open' : ''}`}>
+            <div className="hist-card-header">
                 <div className="hist-card-title-group">
                     <span className="hist-card-name">{event.name}</span>
                     <span className="alert-badge" style={{ background: getAlertColor(event.alertLevel), marginLeft: 8 }}>
@@ -1408,7 +1430,7 @@ const HistoryEventCard = ({ event, getAlertColor, setSelectedEvent, setShowDetai
                         </span>
                     )}
                     <span className="hist-card-tag">{provinces.length} province{provinces.length !== 1 ? 's' : ''}</span>
-                    <span className="hist-chevron">{expanded ? '▲' : '▼'}</span>
+                    <span className="hist-chevron">{showSnapshot ? '▲' : '▼'}</span>
                 </div>
             </div>
 
@@ -1434,6 +1456,16 @@ const HistoryEventCard = ({ event, getAlertColor, setSelectedEvent, setShowDetai
                     <span className="hist-stat-value">{historyTotals.staffCount}</span>
                 </div>
                 <button
+                    className="hist-snapshot-btn"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        setShowSnapshot(prev => !prev);
+                    }}
+                    disabled={officeKeys.length === 0}
+                >
+                    {showSnapshot ? 'Hide PSTO Snapshot' : 'View PSTO Snapshot'}
+                </button>
+                <button
                     className="hist-detail-btn"
                     onClick={(e) => {
                         e.stopPropagation();
@@ -1445,7 +1477,7 @@ const HistoryEventCard = ({ event, getAlertColor, setSelectedEvent, setShowDetai
                 </button>
             </div>
 
-            {expanded && (
+            {showSnapshot && (
                 <div className="hist-body">
                     {officeKeys.length === 0 ? (
                         <p className="hist-empty">No PSTO snapshot available for this event.</p>

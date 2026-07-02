@@ -7,9 +7,23 @@ export const UserModal = ({
     userForm,
     setUserForm,
     isSuperAdmin,
-    handleSaveUser
+    handleSaveUser,
+    officeOptions = []
 }) => {
     if (!isOpen) return null;
+
+    const officeChoices = Array.isArray(officeOptions) && officeOptions.length > 0
+        ? officeOptions
+        : [
+            'PSTO-Ilocos Norte',
+            'PSTO-Ilocos Sur',
+            'PSTO-La Union',
+            'PSTO-Pangasinan',
+            'PSTO-Ilocos Sur - FO',
+            'PSTO-Pangasinan - FO'
+        ];
+
+    const options = Array.from(new Set([...(officeChoices || []), userForm?.office].filter(Boolean)));
 
     return (
         <div className="modal-overlay" onClick={onClose}>
@@ -29,14 +43,7 @@ export const UserModal = ({
                 <div className="form-group">
                     <label>Office</label>
                     <select value={userForm.office} onChange={(e) => setUserForm({ ...userForm, office: e.target.value })}>
-                        {[
-                            'PSTO-Ilocos Norte',
-                            'PSTO-Ilocos Sur',
-                            'PSTO-La Union',
-                            'PSTO-Pangasinan',
-                            'PSTO-Ilocos Sur - FO',
-                            'PSTO-Pangasinan - FO'
-                        ].map((off) => <option key={off}>{off}</option>)}
+                        {options.map((off) => <option key={off} value={off}>{off}</option>)}
                     </select>
                 </div>
                 <div className="form-group">
@@ -88,7 +95,10 @@ export const ReportReviewModal = ({
                     <h3>Review Report - {selectedReport.office}</h3>
                     <button className="modal-close" onClick={onClose}>×</button>
                 </div>
-                <div><strong>Submitted by:</strong> {selectedReport.submittedBy} on {new Date(selectedReport.submittedAt).toLocaleString()}</div>
+                <div><strong>Submitted by:</strong> {selectedReport.submittedBy} on {(() => {
+                    const date = new Date(selectedReport.submittedAt);
+                    return isNaN(date.getTime()) ? 'Unknown date' : date.toLocaleString();
+                })()}</div>
                 <div className="diff-section">
                     <h4>Changes (original → submitted)</h4>
                     {changedKeys.length === 0 && <p>No changes detected.</p>}
@@ -302,6 +312,43 @@ export const RejectEventModal = ({
                 />
                 <div className="modal-buttons">
                     <button className="danger" onClick={confirmRejectEvent}>Confirm Rejection</button>
+                    <button className="modal-close-footer-btn" onClick={onClose}>Cancel</button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export const ReportRejectModal = ({
+    isOpen,
+    onClose,
+    selectedReport,
+    rejectReason,
+    setRejectReason,
+    confirmRejectReport
+}) => {
+    if (!isOpen || !selectedReport) return null;
+
+    return (
+        <div className="modal-overlay" onClick={onClose}>
+            <div className="modal-content reject-modal" onClick={(e) => e.stopPropagation()}>
+                <div className="modal-header">
+                    <h3>Reject Report - {selectedReport.office}</h3>
+                    <button className="modal-close" onClick={onClose}>×</button>
+                </div>
+                <div className="modal-body">
+                    <p><strong>Submitted by:</strong> {selectedReport.submittedBy}</p>
+                    <p>Please provide a reason for rejecting this report:</p>
+                    <textarea
+                        className="reject-reason-textarea"
+                        placeholder="Enter rejection reason..."
+                        value={rejectReason}
+                        onChange={(e) => setRejectReason(e.target.value)}
+                        rows="4"
+                    />
+                </div>
+                <div className="modal-buttons">
+                    <button className="danger" onClick={confirmRejectReport}>Confirm Rejection</button>
                     <button className="modal-close-footer-btn" onClick={onClose}>Cancel</button>
                 </div>
             </div>
