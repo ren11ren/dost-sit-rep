@@ -10,6 +10,7 @@ import {
     RejectEventModal,
     ReportReviewModal,
     ReportSubmissionModal,
+    ReportRejectModal,
     SettingsModal,
     UserModal
 } from './dashboard/DashboardModals';
@@ -41,7 +42,7 @@ import AddEventModal from './dashboard/AddEventModal';
 // ============================================================
 // CONSTANTS & HELPERS
 // ============================================================
-const ALL_PROVINCES = ['Ilocos Norte', 'Ilocos Sur', 'La Union', 'Pangasinan'];
+const ALL_PROVINCES = ['Ilocos Norte', 'Ilocos Sur', 'La Union', 'Pangasinan', 'Ilocos Sur - FO', 'Pangasinan - FO', 'Ilocos Region'];
 const STORAGE_KEYS = {
     OFFICES: 'dash_officesData',
     EVENTS: 'dash_events',
@@ -166,21 +167,42 @@ const PSTO_PANGASINAN_IMG = 'data:image/svg+xml,' + encodeURIComponent(`
 </svg>
 `);
 
-// Region 1 Summary Image
-const REGION_1_IMG = 'data:image/svg+xml,' + encodeURIComponent(`
+// PSTO-Ilocos Region
+const PSTO_ILOCOS_REGION_IMG = 'data:image/svg+xml,' + encodeURIComponent(`
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 200">
   <defs>
     <linearGradient id="grad5" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#0a1a2a;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#1a3c6e;stop-opacity:1" />
+      <stop offset="0%" style="stop-color:#1a4d6d;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#2d7a9e;stop-opacity:1" />
     </linearGradient>
   </defs>
   <rect width="300" height="200" rx="15" fill="url(#grad5)"/>
   <rect x="10" y="10" width="280" height="180" rx="10" fill="none" stroke="#ffd700" stroke-width="2"/>
+  <text x="150" y="50" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="14" font-weight="bold">DOST REGION 1</text>
+  <text x="150" y="75" text-anchor="middle" fill="#ffd700" font-family="Arial, sans-serif" font-size="20" font-weight="bold">📍 ILOCOS REGION</text>
+  <line x1="60" y1="85" x2="240" y2="85" stroke="#ffd700" stroke-width="1" opacity="0.5"/>
+  <text x="150" y="115" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="11">Regional Coordination Center</text>
+  <text x="150" y="135" text-anchor="middle" fill="#b0c4de" font-family="Arial, sans-serif" font-size="10">Ilocos Norte • Ilocos Sur</text>
+  <text x="150" y="150" text-anchor="middle" fill="#b0c4de" font-family="Arial, sans-serif" font-size="10">La Union • Pangasinan</text>
+  <text x="150" y="175" text-anchor="middle" fill="#ffd700" font-family="Arial, sans-serif" font-size="9">Regional Science & Technology Office</text>
+</svg>
+`);
+
+// Region 1 Summary Image
+const REGION_1_IMG = 'data:image/svg+xml,' + encodeURIComponent(`
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 200">
+  <defs>
+    <linearGradient id="grad6" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0a1a2a;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1a3c6e;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect width="300" height="200" rx="15" fill="url(#grad6)"/>
+  <rect x="10" y="10" width="280" height="180" rx="10" fill="none" stroke="#ffd700" stroke-width="2"/>
   <text x="150" y="45" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="16" font-weight="bold">🏛️ DOST REGION 1</text>
   <text x="150" y="65" text-anchor="middle" fill="#ffd700" font-family="Arial, sans-serif" font-size="11">Ilocos Region</text>
   <line x1="80" y1="75" x2="220" y2="75" stroke="#ffd700" stroke-width="1" opacity="0.5"/>
-  <text x="150" y="100" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="12">📍 4 Provincial Offices</text>
+  <text x="150" y="100" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="12">📍 5 Provincial Offices</text>
   <text x="150" y="120" text-anchor="middle" fill="#b0c4de" font-family="Arial, sans-serif" font-size="11">🔬 Science & Technology</text>
   <text x="150" y="140" text-anchor="middle" fill="#b0c4de" font-family="Arial, sans-serif" font-size="11">🌪️ Disaster Risk Reduction</text>
   <text x="150" y="160" text-anchor="middle" fill="#b0c4de" font-family="Arial, sans-serif" font-size="11">📊 Situational Reporting</text>
@@ -194,6 +216,9 @@ const OFFICE_IMAGE_MAP = {
     'PSTO-Ilocos Sur': PSTO_ILOCOS_SUR_IMG,
     'PSTO-La Union': PSTO_LA_UNION_IMG,
     'PSTO-Pangasinan': PSTO_PANGASINAN_IMG,
+    'PSTO-Ilocos Sur - FO': PSTO_ILOCOS_SUR_IMG,
+    'PSTO-Pangasinan - FO': PSTO_PANGASINAN_IMG,
+    'PSTO-Ilocos Region': PSTO_ILOCOS_REGION_IMG,
 };
 
 // ============================================================
@@ -378,6 +403,7 @@ const Dashboard = ({ onLogout, currentUser }) => {
             reject: false,
             report: false,
             reportReview: false,
+            reportReject: false,
             settings: false,
             user: false,
             image: false,
@@ -525,6 +551,15 @@ const Dashboard = ({ onLogout, currentUser }) => {
                 return event.deployment || 'Draft';
             } catch (e) {
                 return 'Unknown';
+            }
+        }, []);
+
+        const formatDateTime = useCallback((value, fallback = 'Unknown date') => {
+            try {
+                const date = new Date(value);
+                return isNaN(date.getTime()) ? fallback : date.toLocaleString();
+            } catch (e) {
+                return fallback;
             }
         }, []);
 
@@ -897,7 +932,23 @@ const Dashboard = ({ onLogout, currentUser }) => {
                     }
                     if (hasEvents) setEvents(archiveOldEvents(payload.events));
                     if (hasUsers) setUsers(payload.users);
-                    if (hasReports) setPendingReports(payload.reports);
+                    if (hasReports) {
+                        // Normalize server report shape to client expectations
+                        const normalized = (payload.reports || []).map(r => ({
+                            id: r.id || r.ID || null,
+                            office: r.office || r.office_name || r.office || '',
+                            submittedBy: r.submitted_by || r.submittedBy || r.submittedBy || '',
+                            submittedAt: (() => {
+                                const raw = r.submitted_at || r.submittedAt || r.created_at || new Date().toISOString();
+                                const parsed = new Date(raw);
+                                return isNaN(parsed.getTime()) ? new Date().toISOString() : parsed.toISOString();
+                            })(),
+                            status: r.status || 'pending',
+                            remarks: r.remarks || r.remark || '',
+                            data: r.data || r.report_data || (r.report_data ? (typeof r.report_data === 'string' ? JSON.parse(r.report_data) : r.report_data) : {})
+                        }));
+                        setPendingReports(normalized);
+                    }
                     if (hasNotifications) setNotifications(payload.notifications);
                     if (typeof payload?.activeMenu === 'string' && payload.activeMenu.trim()) setActiveMenu(payload.activeMenu);
                     if (Array.isArray(payload?.typhoonHistory) && payload.typhoonHistory.length > 0) {
@@ -983,7 +1034,7 @@ const Dashboard = ({ onLogout, currentUser }) => {
                 } catch (e) {
                     console.error('Sync push error:', e);
                 }
-            }, 800);
+            }, 500);
         }, [officesData, events, users, pendingReports, notifications, activeMenu, typhoonHistory]);
 
         // --- Archive Old Events ---
@@ -1529,6 +1580,26 @@ const Dashboard = ({ onLogout, currentUser }) => {
                 };
 
                 setPendingReports(prev => [newReport, ...prev]);
+                // Persist pending reports to backend immediately and trigger a sync push
+                (async () => {
+                    try {
+                        // Save pending reports list on server
+                        const serverReports = Array.isArray(await dbService.getPendingReports()) ? await dbService.getPendingReports() : [];
+                        const merged = [newReport, ...serverReports.filter(r => r.id !== newReport.id)];
+                        await dbService.savePendingReports(merged);
+
+                        // Trigger a sync push so other clients pulling the server will receive updates quickly
+                        try {
+                            const localTs = Date.now();
+                            await dbService.syncAllData({ officesData, events, users, pendingReports: merged, notifications, activeMenu, typhoonHistory, _localTs: localTs });
+                        } catch (syncErr) {
+                            // Not critical; others will pick up via polling
+                            console.warn('syncAllData warning:', syncErr);
+                        }
+                    } catch (e) {
+                        console.error('submitReport persistence error:', e);
+                    }
+                })();
                 toggleModal('report');
                 setReportFormData(null);
 
@@ -1540,7 +1611,7 @@ const Dashboard = ({ onLogout, currentUser }) => {
             }
         }, [reportFormData, selectedOffice, currentUser, setPendingReports, toggleModal, addNotification, showToast]);
 
-        const approveReport = useCallback((reportId) => {
+        const approveReport = useCallback(async (reportId) => {
             try {
                 const report = pendingReports.find(r => r.id === reportId);
                 if (!report) {
@@ -1562,36 +1633,83 @@ const Dashboard = ({ onLogout, currentUser }) => {
                     }
                 }));
 
-                setPendingReports(prev => prev.map(r =>
+                const updatedReports = pendingReports.map(r =>
                     r.id === reportId ? { ...r, status: 'approved' } : r
-                ));
+                );
+
+                setPendingReports(updatedReports);
+                setSelectedReport(prev => prev?.id === reportId ? { ...prev, status: 'approved' } : prev);
 
                 addNotification('Report Approved', `Report from ${report.office} was approved and applied.`, 'success');
                 showToast(`Report for ${report.office} approved and applied.`, 'success');
+
+                try {
+                    await dbService.savePendingReports(updatedReports);
+                    const localTs = Date.now();
+                    await dbService.syncAllData({ officesData, events, users, pendingReports: updatedReports, notifications, activeMenu, typhoonHistory, _localTs: localTs });
+                } catch (syncError) {
+                    console.warn('Approve report persistence warning:', syncError);
+                }
             } catch (e) {
                 console.error('approveReport error:', e);
                 showToast('Failed to approve report.', 'error');
             }
-        }, [pendingReports, setOfficesData, setPendingReports, addNotification, showToast]);
+        }, [pendingReports, setOfficesData, setPendingReports, setSelectedReport, officesData, events, users, notifications, activeMenu, typhoonHistory, addNotification, showToast]);
 
-        const handleRejectReport = useCallback((reportId, reason) => {
+        const handleRejectReport = useCallback(async (reportId, reason) => {
             try {
                 if (!reason || !reason.trim()) {
                     showToast('Please provide a rejection reason.', 'warning');
                     return;
                 }
 
-                setPendingReports(prev => prev.map(r =>
+                const updatedReports = pendingReports.map(r =>
                     r.id === reportId ? { ...r, status: 'rejected', remarks: reason } : r
-                ));
+                );
 
-                const report = pendingReports.find(r => r.id === reportId);
+                setPendingReports(updatedReports);
+                setSelectedReport(prev => prev?.id === reportId ? { ...prev, status: 'rejected', remarks: reason } : prev);
+
+                const report = updatedReports.find(r => r.id === reportId);
                 addNotification('Report Rejected', `Report from ${report?.office || 'Unknown office'} was rejected. Reason: ${reason}`, 'error');
                 showToast('Report rejected.', 'error');
+
+                try {
+                    await dbService.savePendingReports(updatedReports);
+                    const localTs = Date.now();
+                    await dbService.syncAllData({ officesData, events, users, pendingReports: updatedReports, notifications, activeMenu, typhoonHistory, _localTs: localTs });
+                } catch (syncError) {
+                    console.warn('Reject report persistence warning:', syncError);
+                }
             } catch (e) {
                 console.error('handleRejectReport error:', e);
             }
-        }, [pendingReports, setPendingReports, addNotification, showToast]);
+        }, [pendingReports, setPendingReports, setSelectedReport, officesData, events, users, notifications, activeMenu, typhoonHistory, addNotification, showToast]);
+
+        const openRejectReportModal = useCallback((report) => {
+            try {
+                if (!report) return;
+                setSelectedReport(report);
+                setReportRejectReason('');
+                setModals(prev => ({
+                    ...prev,
+                    reportReview: false,
+                    reportReject: true,
+                }));
+            } catch (e) {
+                console.error('openRejectReportModal error:', e);
+            }
+        }, []);
+
+        const confirmRejectReport = useCallback(() => {
+            if (!selectedReport) {
+                showToast('No report selected.', 'error');
+                return;
+            }
+            handleRejectReport(selectedReport.id, reportRejectReason);
+            setReportRejectReason('');
+            setModals(prev => ({ ...prev, reportReject: false }));
+        }, [selectedReport, reportRejectReason, handleRejectReport, showToast]);
 
         // --- Report Form Handlers ---
         const handleReportFieldChange = useCallback((field, value) => {
@@ -2005,7 +2123,7 @@ const Dashboard = ({ onLogout, currentUser }) => {
 
         const handleDeleteEvent = useCallback((eventId) => {
             try {
-                if (!window.confirm('Delete this event? This action cannot be undone.')) return;
+                if (!window.confirm('Are you sure you want to permanently delete this event? This action cannot be undone.')) return;
                 const eventName = events.find(e => e.id === eventId)?.name;
                 setEvents(events.filter(e => e.id !== eventId));
                 toggleModal('details');
@@ -2576,16 +2694,28 @@ const Dashboard = ({ onLogout, currentUser }) => {
                             <tbody>${reportOffices.map(([officeName, officeData]) => {
                     const buildingDamages = (officeData.damage_details || []).map(d =>
                         `<div>${d.description || ''}${d.cost ? ` - ₱${d.cost}` : ''}${d.status ? ` (${d.status})` : ''}${d.image ? ` <img src="${d.image}" style="max-width:50px;max-height:50px;" />` : ''}</div>`
-                    ).join('');
-                    const equipmentDamages = (officeData.equipment_details || []).map(e =>
-                        `<div>${e.name || ''}${e.description ? ` - ${e.description}` : ''}${e.cost ? ` - ₱${e.cost}` : ''}${e.status ? ` (${e.status})` : ''}${e.image ? ` <img src="${e.image}" style="max-width:50px;max-height:50px;" />` : ''}</div>`
-                    ).join('');
-                    const damages = (buildingDamages + equipmentDamages) || 'No damage details';
-                    return `<tr><td style="border:1px solid #000;padding:8px;">${officeName}</td><td style="border:1px solid #000;padding:8px;">${damages}</td></tr>`;
+                    ).join('') || 'No damage details';
+                    return `<tr><td style="border:1px solid #000;padding:8px;">${officeName}</td><td style="border:1px solid #000;padding:8px;">${buildingDamages}</td></tr>`;
                 }).join('')}</tbody>
                         </table>
 
-                        <h3>IV. AFFECTED STAFF</h3>
+                        <h3>IV. DAMAGE EQUIPMENT</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>OFFICE</th>
+                                    <th>EQUIPMENT RECORDS</th>
+                                </tr>
+                            </thead>
+                            <tbody>${reportOffices.map(([officeName, officeData]) => {
+                    const equipmentDamages = (officeData.equipment_details || []).map(e =>
+                        `<div>${e.name || ''}${e.description ? ` - ${e.description}` : ''}${e.cost ? ` - ₱${e.cost}` : ''}${e.status ? ` (${e.status})` : ''}${e.image ? ` <img src="${e.image}" style="max-width:50px;max-height:50px;" />` : ''}</div>`
+                    ).join('') || 'No equipment damage details';
+                    return `<tr><td style="border:1px solid #000;padding:8px;">${officeName}</td><td style="border:1px solid #000;padding:8px;">${equipmentDamages}</td></tr>`;
+                }).join('')}</tbody>
+                        </table>
+
+                        <h3>V. AFFECTED STAFF</h3>
                         <table>
                             <thead>
                                 <tr>
@@ -3828,15 +3958,11 @@ const Dashboard = ({ onLogout, currentUser }) => {
                                             <tr key={report.id}>
                                                 <td>{report.office}</td>
                                                 <td>{report.submittedBy}</td>
-                                                <td>{new Date(report.submittedAt).toLocaleString()}</td>
+                                                <td>{formatDateTime(report.submittedAt, 'Unknown Date')}</td>
                                                 <td><span className="status-badge" style={{ background: '#ffc107' }}>Pending</span></td>
                                                 <td className="actions-cell">
                                                     <button className="success" onClick={() => approveReport(report.id)}>Approve</button>
-                                                    <button className="danger" onClick={() => {
-                                                        setSelectedReport(report);
-                                                        setReportRejectReason('');
-                                                        toggleModal('reportReview');
-                                                    }}>Reject</button>
+                                                    <button className="danger" onClick={() => openRejectReportModal(report)}>Reject</button>
                                                     <button className="view-btn" onClick={() => {
                                                         setSelectedReport(report);
                                                         toggleModal('reportReview');
@@ -3986,9 +4112,19 @@ const Dashboard = ({ onLogout, currentUser }) => {
                     selectedReport={selectedReport}
                     officesData={officesData}
                     approveReport={approveReport}
-                    openRejectReportModal={() => {
-                        toggleModal('reportReview');
+                    openRejectReportModal={openRejectReportModal}
+                />
+
+                <ReportRejectModal
+                    isOpen={modals.reportReject}
+                    onClose={() => {
+                        setReportRejectReason('');
+                        toggleModal('reportReject');
                     }}
+                    selectedReport={selectedReport}
+                    rejectReason={reportRejectReason}
+                    setRejectReason={setReportRejectReason}
+                    confirmRejectReport={confirmRejectReport}
                 />
 
                 <SettingsModal
@@ -4236,6 +4372,7 @@ const Dashboard = ({ onLogout, currentUser }) => {
                     setUserForm={setUserForm}
                     isSuperAdmin={isSuperAdmin}
                     handleSaveUser={handleSaveUser}
+                    officeOptions={Object.keys(officesData || {})}
                 />
             </div>
         );

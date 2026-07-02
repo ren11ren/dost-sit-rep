@@ -7,9 +7,24 @@ export const UserModal = ({
     userForm,
     setUserForm,
     isSuperAdmin,
-    handleSaveUser
+    handleSaveUser,
+    officeOptions = []
 }) => {
     if (!isOpen) return null;
+
+    const officeChoices = Array.isArray(officeOptions) && officeOptions.length > 0
+        ? officeOptions
+        : [
+            'PSTO-Ilocos Norte',
+            'PSTO-Ilocos Sur',
+            'PSTO-La Union',
+            'PSTO-Pangasinan',
+            'PSTO-Ilocos Sur - FO',
+            'PSTO-Pangasinan - FO',
+            'PSTO-Ilocos Region'
+        ];
+
+    const options = Array.from(new Set([...(officeChoices || []), userForm?.office].filter(Boolean)));
 
     return (
         <div className="modal-overlay" onClick={onClose}>
@@ -29,14 +44,7 @@ export const UserModal = ({
                 <div className="form-group">
                     <label>Office</label>
                     <select value={userForm.office} onChange={(e) => setUserForm({ ...userForm, office: e.target.value })}>
-                        {[
-                            'PSTO-Ilocos Norte',
-                            'PSTO-Ilocos Sur',
-                            'PSTO-La Union',
-                            'PSTO-Pangasinan',
-                            'PSTO-Ilocos Sur - FO',
-                            'PSTO-Pangasinan - FO'
-                        ].map((off) => <option key={off}>{off}</option>)}
+                        {options.map((off) => <option key={off} value={off}>{off}</option>)}
                     </select>
                 </div>
                 <div className="form-group">
@@ -81,40 +89,102 @@ export const ReportReviewModal = ({
         (key) => JSON.stringify(officesData[selectedReport.office]?.[key]) !== JSON.stringify(selectedReport.data[key])
     );
 
+    const isDataUrl = (value) => typeof value === 'string' && value.startsWith('data:image/');
+    const shorten = (text, limit = 100) => {
+        if (typeof text !== 'string') return text;
+        return text.length > limit ? `${text.slice(0, limit)}…` : text;
+    };
+
+    const formatValue = (value) => {
+        if (value === undefined || value === null || value === '') {
+            return <span className="empty-value">—</span>;
+        }
+
+        if (typeof value === 'string') {
+            if (isDataUrl(value)) {
+                return <span className="value-tag">Image data · {value.length.toLocaleString()} chars</span>;
+            }
+            try {
+                const parsed = JSON.parse(value);
+                return formatValue(parsed);
+            } catch (_e) {
+                return <span className="value-text" title={value}>{shorten(value, 120)}</span>;
+            }
+        }
+
+        if (Array.isArray(value)) {
+            if (value.length === 0) {
+                return <span className="empty-value">[]</span>;
+            }
+            const preview = value.slice(0, 3).map((item) => typeof item === 'string' ? item : JSON.stringify(item)).join(', ');
+            return <span className="value-summary" title={JSON.stringify(value, null, 2)}>[Array({value.length})] {shorten(preview, 80)}</span>;
+        }
+
+        if (typeof value === 'object') {
+            const keys = Object.keys(value);
+            if (keys.length === 0) {
+                return <span className="empty-value">{'{ }'}</span>;
+            }
+            const preview = keys.slice(0, 4).map((key) => `${key}:${shorten(String(value[key]), 40)}`).join(', ');
+            return <span className="value-summary" title={JSON.stringify(value, null, 2)}>[Object({keys.length})] {shorten(preview, 80)}</span>;
+        }
+
+        return <span>{String(value)}</span>;
+    };
+
+    const formatDate = (value) => {
+        const date = new Date(value);
+        return isNaN(date.getTime()) ? 'Unknown date' : date.toLocaleString();
+    };
+
     return (
         <div className="modal-overlay" onClick={onClose}>
-            <div className="modal-content large-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-content large-modal report-review-modal" onClick={(e) => e.stopPropagation()}>
                 <div className="modal-header">
-                    <h3>Review Report - {selectedReport.office}</h3>
+                    <div>
+                        <h3>Review Report</h3>
+                        <p className="review-meta">{selectedReport.office} • Submitted by {selectedReport.submittedBy} • {formatDate(selectedReport.submittedAt)}</p>
+                    </div>
                     <button className="modal-close" onClick={onClose}>×</button>
                 </div>
-                <div><strong>Submitted by:</strong> {selectedReport.submittedBy} on {new Date(selectedReport.submittedAt).toLocaleString()}</div>
                 <div className="diff-section">
-                    <h4>Changes (original → submitted)</h4>
-                    {changedKeys.length === 0 && <p>No changes detected.</p>}
-                    {changedKeys.map((key) => (
-                        <div key={key} className="diff-row">
-                            <strong>{key}:</strong>
-                            <br />
-                            <span className="diff-old">Original: {JSON.stringify(officesData[selectedReport.office]?.[key])}</span>
-                            <br />
-                            <span className="diff-new">Submitted: {JSON.stringify(selectedReport.data[key])}</span>
+                    <h4>Changes</h4>
+                    {changedKeys.length === 0 ? (
+                        <p className="no-changes">No changes detected.</p>
+                    ) : (
+                        <div className="review-change-list">
+                            {changedKeys.map((key) => (
+                                <div key={key} className="review-change-row">
+                                    <div className="review-field">{key}</div>
+                                    <div className="review-value-blocks">
+                                        <div className="review-value-block">
+                                            <div className="review-label">Original</div>
+                                            <div className="review-value">{formatValue(officesData[selectedReport.office]?.[key])}</div>
+                                        </div>
+                                        <div className="review-value-block">
+                                            <div className="review-label">Submitted</div>
+                                            <div className="review-value">{formatValue(selectedReport.data[key])}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
-                    ))}
+                    )}
                 </div>
                 {selectedReport.status === 'rejected' && (
                     <div className="rejection-reason">
                         <strong>Rejection reason:</strong> {selectedReport.remarks}
                     </div>
                 )}
-                {selectedReport.status === 'pending' && (
-                    <div className="modal-buttons">
-                        <button className="success" onClick={() => { approveReport(selectedReport.id); onClose(); }}>Approve</button>
-                        <button className="danger" onClick={() => { onClose(); openRejectReportModal(selectedReport); }}>Reject</button>
-                        <button className="modal-close-footer-btn" onClick={onClose}>Close</button>
-                    </div>
-                )}
-                {selectedReport.status !== 'pending' && <button className="modal-close-footer-btn" onClick={onClose}>Close</button>}
+                <div className="modal-buttons report-review-actions">
+                    {selectedReport.status === 'pending' && (
+                        <>
+                            <button className="success" onClick={() => { approveReport(selectedReport.id); onClose(); }}>Approve</button>
+                            <button className="danger" onClick={() => { onClose(); openRejectReportModal(selectedReport); }}>Reject</button>
+                        </>
+                    )}
+                    <button className="modal-close-footer-btn" onClick={onClose}>Close</button>
+                </div>
             </div>
         </div>
     );
@@ -302,6 +372,43 @@ export const RejectEventModal = ({
                 />
                 <div className="modal-buttons">
                     <button className="danger" onClick={confirmRejectEvent}>Confirm Rejection</button>
+                    <button className="modal-close-footer-btn" onClick={onClose}>Cancel</button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export const ReportRejectModal = ({
+    isOpen,
+    onClose,
+    selectedReport,
+    rejectReason,
+    setRejectReason,
+    confirmRejectReport
+}) => {
+    if (!isOpen || !selectedReport) return null;
+
+    return (
+        <div className="modal-overlay" onClick={onClose}>
+            <div className="modal-content reject-modal" onClick={(e) => e.stopPropagation()}>
+                <div className="modal-header">
+                    <h3>Reject Report - {selectedReport.office}</h3>
+                    <button className="modal-close" onClick={onClose}>×</button>
+                </div>
+                <div className="modal-body">
+                    <p><strong>Submitted by:</strong> {selectedReport.submittedBy}</p>
+                    <p>Please provide a reason for rejecting this report:</p>
+                    <textarea
+                        className="reject-reason-textarea"
+                        placeholder="Enter rejection reason..."
+                        value={rejectReason}
+                        onChange={(e) => setRejectReason(e.target.value)}
+                        rows="4"
+                    />
+                </div>
+                <div className="modal-buttons">
+                    <button className="danger" onClick={confirmRejectReport}>Confirm Rejection</button>
                     <button className="modal-close-footer-btn" onClick={onClose}>Cancel</button>
                 </div>
             </div>

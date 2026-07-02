@@ -21,6 +21,8 @@ const Login = ({ onLogin }) => {
     { id: 10, name: 'Pangasinan FO Admin', email: 'admin-pangasinan-fo@dostregion1.ph', office: 'PSTO-Pangasinan - FO', role: 'ADMIN', status: 'Active', password: 'admin123' },
     { id: 11, name: 'Pangasinan FO User', email: 'user-pangasinan-fo@dostregion1.ph', office: 'PSTO-Pangasinan - FO', role: 'USER', status: 'Active', password: 'user123' },
     { id: 12, name: 'Ilocos Sur User 3', email: 'user-ilocossur3@dostregion1.ph', office: 'PSTO-Ilocos Sur', role: 'USER', status: 'Active', password: 'user123' },
+    { id: 13, name: 'Region Coordinator', email: 'coordinator-ilocos@dostregion1.ph', office: 'PSTO-Ilocos Region', role: 'ADMIN', status: 'Active', password: 'admin123' },
+    { id: 14, name: 'Region User', email: 'user-ilocos-region@dostregion1.ph', office: 'PSTO-Ilocos Region', role: 'USER', status: 'Active', password: 'user123' },
   ];
 
   const handleSubmit = (e) => {

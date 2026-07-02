@@ -13,7 +13,7 @@ class SyncService {
 
     this.syncInterval = setInterval(() => {
       this.syncData();
-    }, 10000); // Sync every 10 seconds for near-real-time updates
+    }, 5000); // Sync every 5 seconds for more real-time updates
   }
 
   stopAutoSync() {

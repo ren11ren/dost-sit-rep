@@ -1374,14 +1374,6 @@ textarea {
   background: linear-gradient(135deg, #3a1a5c, #6a2d9f) !important;
 }
 
-.psto-selector-card:not(.has-image)[data-office="PSTO-Ilocos Sur - FO"] {
-  background: linear-gradient(135deg, #1a4a4a, #2d6a6a) !important;
-}
-
-.psto-selector-card:not(.has-image)[data-office="PSTO-Pangasinan - FO"] {
-  background: linear-gradient(135deg, #4a1a4a, #6a2d6a) !important;
-}
-
 .psto-selector-card:not(.has-image)[data-office="PSTO-Region-1"] {
   background: linear-gradient(135deg, #2d3748, #4a5568) !important;
 }
@@ -3089,6 +3081,143 @@ textarea {
   font-size: 20px;
   color: var(--text);
   font-weight: 600;
+}
+
+.report-review-modal .review-meta {
+  margin: 4px 0 0;
+  font-size: 14px;
+  color: var(--muted-text);
+}
+
+.report-diff-table-wrapper {
+  overflow-x: auto;
+  margin-top: 16px;
+}
+
+.report-diff-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.report-diff-table th,
+.report-diff-table td {
+  text-align: left;
+  padding: 12px 10px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+.report-diff-table th {
+  background: rgba(0, 0, 0, 0.03);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.json-value {
+  margin: 0;
+  padding: 10px;
+  background: var(--input-bg);
+  color: var(--text);
+  border-radius: 8px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 13px;
+}
+
+.empty-value {
+  color: var(--muted-text);
+}
+
+.no-changes {
+  margin: 12px 0 0;
+  color: var(--muted-text);
+}
+
+.report-review-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 22px;
+}
+
+.report-review-modal .review-change-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.report-review-modal .review-change-row {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 12px;
+}
+
+.report-review-modal .review-field {
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: var(--text);
+}
+
+.report-review-modal .review-value-blocks {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.report-review-modal .review-value-block {
+  padding: 10px 12px;
+  background: var(--bg-secondary);
+  border-radius: 10px;
+}
+
+.report-review-modal .review-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted-text);
+}
+
+.report-review-modal .review-value {
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.report-review-modal .value-summary,
+.report-review-modal .value-text,
+.report-review-modal .value-tag,
+.report-review-modal .empty-value {
+  display: inline-block;
+}
+
+.report-review-modal .value-tag {
+  color: var(--primary);
+}
+
+@media (max-width: 900px) {
+  .report-review-modal .review-value-blocks {
+    grid-template-columns: 1fr;
+  }
+}
+
+.report-review-modal .value-summary,
+.report-review-modal .value-text,
+.report-review-modal .value-tag,
+.report-review-modal .empty-value {
+  display: inline-block;
+}
+
+.report-review-modal .value-tag {
+  color: var(--primary);
+}
+
+@media (max-width: 900px) {
+  .report-review-modal .diff-values {
+    grid-template-columns: 1fr;
+  }
 }
 
 .modal-close {
