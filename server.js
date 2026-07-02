@@ -23,29 +23,33 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 const getPgConfig = () => {
+    const isLocalHost = (host) => ['localhost', '127.0.0.1', '::1'].includes(host || '');
+
     if (process.env.DATABASE_URL) {
-        // Strip sslmode from URL — we enforce ssl via the explicit ssl object below
-        // so pg-connection-string cannot override it with full cert verification
         let connStr = process.env.DATABASE_URL;
+        let host = null;
         try {
             const u = new URL(connStr);
+            host = u.hostname;
             u.searchParams.delete('sslmode');
             connStr = u.toString();
         } catch (_) { }
+
         return {
             connectionString: connStr,
-            ssl: { rejectUnauthorized: false },
+            ...(isLocalHost(host) ? {} : { ssl: { rejectUnauthorized: false } }),
             max: parseInt(process.env.DB_POOL_MAX || '20', 10)
         };
     }
 
+    const host = process.env.DB_HOST || 'localhost';
     return {
-        host: process.env.DB_HOST || 'localhost',
+        host,
         port: parseInt(process.env.DB_PORT || '5432', 10),
         user: process.env.DB_USER || 'postgres',
         password: process.env.DB_PASSWORD || '',
         database: process.env.DB_NAME || 'defaultdb',
-        ssl: { rejectUnauthorized: false },
+        ...(isLocalHost(host) ? {} : { ssl: { rejectUnauthorized: false } }),
         max: parseInt(process.env.DB_POOL_MAX || '20', 10)
     };
 };

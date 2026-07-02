@@ -1,4 +1,4 @@
-// Dashboard.js - Complete Full Code
+// Dashboard.js - Complete Full Code with Fixed History
 
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import * as XLSX from 'xlsx';
@@ -31,10 +31,12 @@ import {
     PSTOSelector,
     EditControlsBar,
     OfficeModal,
-    AddEventModal,
     EventDetailsModal,
     TyphoonHistoryContent
 } from './dashboard/DashboardSections';
+
+// Import AddEventModal directly
+import AddEventModal from './dashboard/AddEventModal';
 
 // ============================================================
 // CONSTANTS & HELPERS
@@ -298,6 +300,24 @@ const Dashboard = ({ onLogout, currentUser }) => {
                 return DEFAULT_OFFICE_DATA;
             }
         });
+
+        // DEV: log officesData changes to trace unexpected resets
+        useEffect(() => {
+            try {
+                console.debug('DEBUG: officesData changed. Summary:', {
+                    timestamp: new Date().toISOString(),
+                    officeCount: Object.keys(officesData || {}).length,
+                    nonEmptyOffices: Object.keys(officesData || {}).filter(k => {
+                        const o = officesData[k] || {};
+                        const buildingSum = Array.isArray(o.damage_details) ? o.damage_details.reduce((s, it) => s + (parseFloat(it?.cost) || 0), 0) : 0;
+                        const equipSum = Array.isArray(o.equipment_details) ? o.equipment_details.reduce((s, it) => s + (parseFloat(it?.cost) || 0), 0) : 0;
+                        return buildingSum + equipSum > 0 || (o.casualties || 0) > 0;
+                    }).length
+                });
+            } catch (e) {
+                console.error('DEBUG: officesData change log failed:', e);
+            }
+        }, [officesData]);
 
         const [events, setEvents] = useLocalStorage(STORAGE_KEYS.EVENTS, () => {
             try {
@@ -815,7 +835,9 @@ const Dashboard = ({ onLogout, currentUser }) => {
                     const hasUsers = Array.isArray(payload?.users) && payload.users.length > 0;
                     const hasReports = Array.isArray(payload?.reports) && payload.reports.length > 0;
                     const hasNotifications = Array.isArray(payload?.notifications) && payload.notifications.length > 0;
-                    return hasOffices || hasEvents || hasUsers || hasReports || hasNotifications;
+                    const hasHistory = Array.isArray(payload?.typhoonHistory) && payload.typhoonHistory.length > 0;
+                    const hasActiveMenu = typeof payload?.activeMenu === 'string' && payload.activeMenu.trim();
+                    return hasOffices || hasEvents || hasUsers || hasReports || hasNotifications || hasHistory || hasActiveMenu;
                 } catch (e) {
                     return false;
                 }
@@ -1726,6 +1748,101 @@ const Dashboard = ({ onLogout, currentUser }) => {
             }
         }, [rejectReason, events, rejectEventId, setEvents, selectedEvent, addNotification, toggleModal, showToast]);
 
+        const parseNumber = (value) => {
+            if (value === null || value === undefined || value === '') return 0;
+            if (typeof value === 'number' && Number.isFinite(value)) return value;
+            if (typeof value === 'string') {
+                const cleaned = value.replace(/[^0-9.-]/g, '');
+                const parsed = Number(cleaned);
+                return Number.isFinite(parsed) ? parsed : 0;
+            }
+            if (typeof value === 'object') {
+                return parseNumber(value.amount ?? value.cost ?? value.value ?? value.total);
+            }
+            return 0;
+        };
+
+        const createHistoryArchiveEntry = useCallback((eventToArchive, snapshotData = officesData) => {
+            try {
+                if (!eventToArchive) return null;
+
+                const snapshot = {};
+                let totalBuildingDamage = 0;
+                let totalEquipmentDamage = 0;
+                let totalCasualties = 0;
+                let totalAffectedStaff = 0;
+                const aggregatedDamage = [];
+                const aggregatedEquipment = [];
+                const aggregatedStaff = [];
+
+                Object.keys(snapshotData || {}).forEach(key => {
+                    const office = snapshotData[key] || {};
+                    const damageItems = Array.isArray(office.damage_details) ? office.damage_details : [];
+                    const equipmentItems = Array.isArray(office.equipment_details) ? office.equipment_details : [];
+                    const staffItems = Array.isArray(office.affected_staff) ? office.affected_staff : [];
+                    const buildingDamage = damageItems.reduce((sum, item) => sum + parseNumber(item?.cost ?? item?.amount ?? item?.value ?? item?.total), 0);
+                    const equipmentDamage = equipmentItems.reduce((sum, item) => sum + parseNumber(item?.cost ?? item?.amount ?? item?.value ?? item?.total), 0);
+                    const casualties = parseNumber(office.casualties);
+                    const affectedStaff = staffItems.length;
+
+                    snapshot[key] = {
+                        ...office,
+                        damage_details: damageItems,
+                        equipment_details: equipmentItems,
+                        affected_staff: staffItems,
+                        casualties,
+                        buildingDamage,
+                        equipmentDamage,
+                        affectedStaff,
+                    };
+
+                    totalBuildingDamage += buildingDamage;
+                    totalEquipmentDamage += equipmentDamage;
+                    totalCasualties += casualties;
+                    totalAffectedStaff += affectedStaff;
+                    aggregatedDamage.push(...damageItems);
+                    aggregatedEquipment.push(...equipmentItems);
+                    aggregatedStaff.push(...staffItems);
+                });
+
+                return {
+                    ...eventToArchive,
+                    deployment: 'Draft',
+                    status: 'archived',
+                    archivedAt: new Date().toISOString(),
+                    officesSnapshot: snapshot,
+                    buildingsSnapshot: snapshot,
+                    buildingDamage: totalBuildingDamage,
+                    equipmentDamage: totalEquipmentDamage,
+                    casualties: totalCasualties,
+                    affectedStaff: totalAffectedStaff,
+                    damage_details: aggregatedDamage,
+                    equipment_details: aggregatedEquipment,
+                    affected_staff: aggregatedStaff,
+                };
+            } catch (e) {
+                console.error('createHistoryArchiveEntry error:', e);
+                return null;
+            }
+        }, [officesData]);
+
+        const appendHistoryEntry = useCallback((eventToArchive, snapshotData = officesData) => {
+            try {
+                const historyEntry = createHistoryArchiveEntry(eventToArchive, snapshotData);
+                if (!historyEntry) return;
+
+                setTyphoonHistory(prev => {
+                    const next = prev.some(entry => entry.id === historyEntry.id)
+                        ? prev.map(entry => entry.id === historyEntry.id ? historyEntry : entry)
+                        : [historyEntry, ...prev];
+                    saveToStorage(STORAGE_KEYS.HISTORY, next);
+                    return next;
+                });
+            } catch (e) {
+                console.error('appendHistoryEntry error:', e);
+            }
+        }, [createHistoryArchiveEntry, setTyphoonHistory]);
+
         const handleDeployEvent = useCallback((eventId) => {
             try {
                 if (!canDeployEvents) {
@@ -1733,25 +1850,24 @@ const Dashboard = ({ onLogout, currentUser }) => {
                     return;
                 }
                 const eventToDeploy = events.find(e => e.id === eventId);
-                if (!eventToDeploy) return;
+                if (!eventToDeploy) {
+                    showToast('Event not found.', 'error');
+                    return;
+                }
                 if (eventToDeploy.status !== 'approved') {
                     showToast('Only approved events can be deployed.', 'warning');
                     return;
                 }
                 if (!window.confirm('Deploy this event? It will become the active event.')) return;
 
+                // Find currently deployed event
                 const currentlyDeployed = events.find(e => e.deployment === 'Deployed' && e.id !== eventId);
+
                 if (currentlyDeployed) {
-                    const historyEntry = {
-                        ...currentlyDeployed,
-                        deployment: 'Draft',
-                        status: 'archived',
-                        archivedAt: new Date().toISOString(),
-                        officesSnapshot: JSON.parse(JSON.stringify(officesData))
-                    };
-                    setTyphoonHistory(prev => [historyEntry, ...prev]);
+                    appendHistoryEntry(currentlyDeployed, officesData);
                 }
 
+                // Update events - mark the new one as deployed
                 setEvents(events.map(e => ({
                     ...e,
                     deployment: e.id === eventId ? 'Deployed' : (e.deployment === 'Deployed' ? 'Draft' : e.deployment),
@@ -1760,10 +1876,18 @@ const Dashboard = ({ onLogout, currentUser }) => {
 
                 addNotification('Event Deployed', `Event ${eventToDeploy.name} is now the active typhoon.`, 'success');
                 showToast('Event deployed.', 'success');
+
+                // Reset PSTO office data for the newly deployed event
+                try {
+                    resetPSTODataForNewEvent();
+                } catch (e) {
+                    console.error('Failed to reset PSTO data after deploy:', e);
+                }
             } catch (e) {
                 console.error('handleDeployEvent error:', e);
+                showToast('Failed to deploy event.', 'error');
             }
-        }, [canDeployEvents, events, officesData, setEvents, setTyphoonHistory, addNotification, showToast]);
+        }, [canDeployEvents, events, officesData, setEvents, appendHistoryEntry, addNotification, showToast, resetPSTODataForNewEvent]);
 
         const handleAddEvent = useCallback(() => {
             try {
@@ -1776,23 +1900,18 @@ const Dashboard = ({ onLogout, currentUser }) => {
                     return;
                 }
 
+                const existingEvents = Array.isArray(events) ? events : [];
+
                 if (isEditingEvent && newEvent.id) {
                     const formattedDate = newEvent.startDateTime ?
                         new Date(newEvent.startDateTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) :
                         (newEvent.date || new Date().toLocaleDateString());
                     const provinces = newEvent.sendToAllUsers ? ALL_PROVINCES : newEvent.provinces;
-                    setEvents(events.map(e => e.id === newEvent.id ? ({ ...e, ...newEvent, provinces, date: formattedDate, type: e.type || 'Tropical Cyclone' }) : e));
+                    setEvents(existingEvents.map(e => e.id === newEvent.id ? ({ ...e, ...newEvent, provinces, date: formattedDate, type: e.type || 'Tropical Cyclone' }) : e));
                     if (newEvent.deployment === 'Deployed') {
-                        const currentlyDeployed = events.find(e => e.deployment === 'Deployed' && e.id !== newEvent.id);
+                        const currentlyDeployed = existingEvents.find(e => e.deployment === 'Deployed' && e.id !== newEvent.id);
                         if (currentlyDeployed) {
-                            const historyEntry = {
-                                ...currentlyDeployed,
-                                deployment: 'Draft',
-                                status: 'archived',
-                                archivedAt: new Date().toISOString(),
-                                officesSnapshot: JSON.parse(JSON.stringify(officesData))
-                            };
-                            setTyphoonHistory(prev => [historyEntry, ...prev]);
+                            appendHistoryEntry(currentlyDeployed, officesData);
                         }
                     }
                     addNotification('Event Edited', `Event ${newEvent.name} has been updated.`, 'info');
@@ -1803,7 +1922,7 @@ const Dashboard = ({ onLogout, currentUser }) => {
                     return;
                 }
 
-                const newId = events.length > 0 ? Math.max(...events.map(e => e.id)) + 1 : 1;
+                const newId = existingEvents.length > 0 ? Math.max(...existingEvents.map(e => Number(e.id) || 0)) + 1 : 1;
                 const formattedDate = newEvent.startDateTime ?
                     new Date(newEvent.startDateTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) :
                     new Date().toLocaleDateString();
@@ -1821,32 +1940,27 @@ const Dashboard = ({ onLogout, currentUser }) => {
                     createdAt: new Date().toISOString()
                 };
 
-                setEvents([newEventObj, ...events]);
+                setEvents([newEventObj, ...existingEvents]);
 
                 if (newEvent.deployment === 'Deployed') {
-                    const currentlyDeployed = events.find(e => e.deployment === 'Deployed');
+                    const currentlyDeployed = existingEvents.find(e => e.deployment === 'Deployed');
                     if (currentlyDeployed) {
-                        const historyEntry = {
-                            ...currentlyDeployed,
-                            deployment: 'Draft',
-                            status: 'archived',
-                            archivedAt: new Date().toISOString(),
-                            officesSnapshot: JSON.parse(JSON.stringify(officesData))
-                        };
-                        setTyphoonHistory(prev => [historyEntry, ...prev]);
+                        appendHistoryEntry(currentlyDeployed, officesData);
                     }
+                    addNotification('Event Created', `New event "${newEvent.name}" has been created and is now active.`, 'success');
+                    showToast('Event created successfully.', 'success');
+                } else {
+                    addNotification('Event Created', `New event "${newEvent.name}" has been created.`, 'success');
+                    showToast('Event created successfully.', 'success');
                 }
 
-                resetPSTODataForNewEvent();
-                addNotification('Event Created', `New event "${newEvent.name}" has been created. PSTO data has been reset.`, 'success');
                 resetNewEventForm();
                 toggleModal('add');
-                showToast('Event created and PSTO data reset.', 'success');
             } catch (e) {
                 console.error('handleAddEvent error:', e);
                 showToast('Failed to create event.', 'error');
             }
-        }, [canEditEvents, isEditingEvent, newEvent, events, officesData, setEvents, setTyphoonHistory, resetPSTODataForNewEvent, addNotification, toggleModal, showToast, resetNewEventForm]);
+        }, [canEditEvents, isEditingEvent, newEvent, events, officesData, setEvents, appendHistoryEntry, resetPSTODataForNewEvent, addNotification, toggleModal, showToast, resetNewEventForm]);
 
         const handleEditEvent = useCallback((event) => {
             try {
@@ -3544,7 +3658,14 @@ const Dashboard = ({ onLogout, currentUser }) => {
                                         )}
                                     </div>
                                     {canEditEvents && (
-                                        <button className="new-event-btn" onClick={() => toggleModal('add')}>
+                                        <button
+                                            className="new-event-btn"
+                                            onClick={() => {
+                                                setIsEditingEvent(false);
+                                                resetNewEventForm();
+                                                toggleModal('add');
+                                            }}
+                                        >
                                             ➕ Add New Event
                                         </button>
                                     )}

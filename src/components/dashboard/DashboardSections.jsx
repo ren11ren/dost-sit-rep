@@ -173,9 +173,17 @@ const DEFAULT_USERS = [
 const loadFromStorage = (key, defaultValue) => {
     const stored = localStorage.getItem(key);
     if (stored) {
-        try { return JSON.parse(stored); } catch (e) { return defaultValue; }
+        try {
+            const parsedValue = JSON.parse(stored);
+            if (Array.isArray(defaultValue) && !Array.isArray(parsedValue)) {
+                return typeof defaultValue === 'function' ? defaultValue() : defaultValue;
+            }
+            return parsedValue;
+        } catch (e) {
+            return typeof defaultValue === 'function' ? defaultValue() : defaultValue;
+        }
     }
-    return defaultValue;
+    return typeof defaultValue === 'function' ? defaultValue() : defaultValue;
 };
 
 const saveToStorage = (key, data) => {
@@ -197,6 +205,8 @@ const saveToStorage = (key, data) => {
 };
 
 const archiveOldEvents = (events) => {
+    if (!Array.isArray(events)) return [];
+
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     return events.map(event => {
@@ -242,6 +252,192 @@ const fetchLiveWeather = async () => {
 
 // Deep clone function
 const deepClone = (obj) => JSON.parse(JSON.stringify(obj));
+
+const toHistoryNumber = (value) => {
+    if (value === null || value === undefined || value === '') return 0;
+    if (typeof value === 'number' && Number.isFinite(value)) return value;
+    if (typeof value === 'string') {
+        const cleaned = value.replace(/[^0-9.-]/g, '');
+        const parsed = Number(cleaned);
+        return Number.isFinite(parsed) ? parsed : 0;
+    }
+    if (typeof value === 'object') {
+        return toHistoryNumber(value.amount ?? value.cost ?? value.value ?? value.total);
+    }
+    return 0;
+};
+
+const parseHistoryValue = (value) => {
+    if (value === null || value === undefined || value === '') return null;
+    if (typeof value !== 'string') return value;
+
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+
+    try {
+        const parsed = JSON.parse(trimmed);
+        return parsed;
+    } catch (_) {
+        return value;
+    }
+};
+
+const normalizeHistoryArray = (value) => {
+    const parsed = parseHistoryValue(value);
+    if (Array.isArray(parsed)) return parsed.filter(item => item !== null && item !== undefined);
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        return [parsed];
+    }
+    return [];
+};
+
+const normalizeHistoryObject = (value) => {
+    const parsed = parseHistoryValue(value);
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        return parsed;
+    }
+    return {};
+};
+
+const getHistoryArray = (source, keys) => {
+    for (const key of keys) {
+        const value = source?.[key];
+        const normalized = normalizeHistoryArray(value);
+        if (normalized.length > 0) return normalized;
+    }
+    return [];
+};
+
+const getHistoryNumber = (source, keys) => {
+    for (const key of keys) {
+        const value = source?.[key];
+        if (value !== undefined && value !== null && value !== '') {
+            return toHistoryNumber(value);
+        }
+    }
+    return 0;
+};
+
+const getHistorySnapshot = (event = {}) => {
+    const candidates = [
+        event?.officesSnapshot,
+        event?.offices_snapshot,
+        event?.snapshot,
+        event?.snapshotData,
+        event?.officesData,
+        event?.offices,
+        event?.data?.officesSnapshot,
+        event?.data?.offices_snapshot,
+        event?.data?.snapshot,
+        event?.data?.officesData,
+        event?.data?.offices,
+        event?.payload?.officesSnapshot,
+        event?.payload?.offices_snapshot,
+        event?.payload?.officesData,
+        event?.payload?.offices,
+    ];
+
+    for (const candidate of candidates) {
+        const normalized = normalizeHistoryObject(candidate);
+        if (Object.keys(normalized).length > 0) {
+            return normalized;
+        }
+    }
+
+    return {};
+};
+
+const getHistoryProvinces = (event = {}) => {
+    const candidateValues = [
+        event?.provinces,
+        event?.data?.provinces,
+        event?.payload?.provinces,
+        event?.provincesList,
+        event?.data?.provincesList,
+        event?.payload?.provincesList,
+    ];
+
+    for (const candidate of candidateValues) {
+        const normalized = normalizeHistoryArray(candidate);
+        if (normalized.length > 0) {
+            return normalized.map(item => typeof item === 'string' ? item : (item?.name || item?.label || '')).filter(Boolean);
+        }
+    }
+
+    const plainValue = parseHistoryValue(event?.provinces);
+    if (typeof plainValue === 'string') {
+        return plainValue
+            .split(',')
+            .map(item => item.trim())
+            .filter(Boolean);
+    }
+
+    return [];
+};
+
+const getHistoryTotalsFromSource = (source = {}) => {
+    const buildingItems = getHistoryArray(source, ['damage_details', 'damageDetails', 'building_damage', 'buildingDamage', 'damageData', 'damage']);
+    const buildingFallback = getHistoryNumber(source, ['building_damage_total', 'buildingDamageTotal', 'damage_total', 'damageTotal', 'totalDamage', 'damageCost']);
+    const explicitBuildingDamage = getHistoryNumber(source, ['buildingDamage', 'building_damage', 'buildingDamageCost', 'building_damage_cost']);
+    const equipmentItems = getHistoryArray(source, ['equipment_details', 'equipmentDetails', 'equipment_damage', 'equipmentDamage', 'equipmentData', 'equipment']);
+    const equipmentFallback = getHistoryNumber(source, ['equipment_damage_total', 'equipmentDamageTotal', 'equipment_cost', 'equipmentCost']);
+    const explicitEquipmentDamage = getHistoryNumber(source, ['equipmentDamage', 'equipment_damage', 'equipmentDamageCost', 'equipment_damage_cost']);
+    const staffItems = getHistoryArray(source, ['affected_staff', 'affectedStaff', 'staffAffected', 'staff']);
+    const explicitStaffCount = getHistoryNumber(source, ['affectedStaff', 'staffCount', 'affected_staff_count', 'staff_count']);
+    const explicitCasualtyCount = getHistoryNumber(source, ['casualties', 'casualtyCount', 'totalCasualties', 'casualty_count']);
+
+    const arrayBuildingCost = buildingItems.reduce((sum, item) => sum + toHistoryNumber(item?.cost ?? item?.amount ?? item?.value ?? item?.total), 0);
+    const arrayEquipmentCost = equipmentItems.reduce((sum, item) => sum + toHistoryNumber(item?.cost ?? item?.amount ?? item?.value ?? item?.total), 0);
+    const hasExplicitTotals = explicitBuildingDamage > 0 || explicitEquipmentDamage > 0 || explicitStaffCount > 0 || explicitCasualtyCount > 0;
+
+    return {
+        buildingCost: hasExplicitTotals ? (explicitBuildingDamage || buildingFallback || arrayBuildingCost) : (arrayBuildingCost + (buildingFallback || 0)),
+        equipmentCost: hasExplicitTotals ? (explicitEquipmentDamage || equipmentFallback || arrayEquipmentCost) : (arrayEquipmentCost + (equipmentFallback || 0)),
+        staffCount: hasExplicitTotals ? (explicitStaffCount || staffItems.length) : (staffItems.length > 0 ? staffItems.length : explicitStaffCount),
+        casualtyCount: hasExplicitTotals ? (explicitCasualtyCount || 0) : explicitCasualtyCount,
+    };
+};
+
+export const getHistoryTotals = (event = {}) => {
+    const snapshot = getHistorySnapshot(event);
+    const officeEntries = Object.entries(snapshot)
+        .filter(([, value]) => value && typeof value === 'object' && !Array.isArray(value))
+        .filter(([key]) => key !== 'PSTO-Region-1');
+
+    const officeTotals = officeEntries.reduce((totals, [, office]) => {
+        const officeTotalsForSource = getHistoryTotalsFromSource(office);
+        return {
+            buildingCost: totals.buildingCost + officeTotalsForSource.buildingCost,
+            equipmentCost: totals.equipmentCost + officeTotalsForSource.equipmentCost,
+            staffCount: totals.staffCount + officeTotalsForSource.staffCount,
+            casualtyCount: totals.casualtyCount + officeTotalsForSource.casualtyCount,
+        };
+    }, { buildingCost: 0, equipmentCost: 0, staffCount: 0, casualtyCount: 0 });
+
+    const rootSources = [event, event?.data, event?.payload, event?.record, event?.details].filter(source => source && typeof source === 'object' && !Array.isArray(source));
+    const rootTotals = rootSources.reduce((totals, source) => {
+        const sourceTotals = getHistoryTotalsFromSource(source);
+        return {
+            buildingCost: totals.buildingCost + sourceTotals.buildingCost,
+            equipmentCost: totals.equipmentCost + sourceTotals.equipmentCost,
+            staffCount: totals.staffCount + sourceTotals.staffCount,
+            casualtyCount: totals.casualtyCount + sourceTotals.casualtyCount,
+        };
+    }, { buildingCost: 0, equipmentCost: 0, staffCount: 0, casualtyCount: 0 });
+
+    const hasRootTotals = rootTotals.buildingCost > 0 || rootTotals.equipmentCost > 0 || rootTotals.staffCount > 0 || rootTotals.casualtyCount > 0;
+
+    const totals = hasRootTotals ? rootTotals : officeTotals;
+
+    return {
+        buildingCost: totals.buildingCost,
+        equipmentCost: totals.equipmentCost,
+        totalDamage: totals.buildingCost + totals.equipmentCost,
+        staffCount: totals.staffCount,
+        casualtyCount: totals.casualtyCount,
+        officeCount: officeEntries.length
+    };
+};
 
 // ======================== REJECT MODAL COMPONENT ========================
 const RejectModal = ({ isOpen, onClose, onConfirm, title, itemName }) => {
@@ -538,7 +734,7 @@ const OfficeModal = ({
                             <span className="summary-card-label">Building Damage Cost</span>
                             <span className="summary-card-value">
                                 ₱{(Array.isArray(currentOfficeData.damage_details) ? currentOfficeData.damage_details : [])
-                                    .reduce((sum, item) => sum + (parseFloat(item.cost) || 0), 0)
+                                    .reduce((sum, item) => sum + toHistoryNumber(item?.cost ?? item?.amount ?? item?.value ?? item?.total), 0)
                                     .toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </span>
                         </div>
@@ -546,7 +742,7 @@ const OfficeModal = ({
                             <span className="summary-card-label">Equipment Damage Cost</span>
                             <span className="summary-card-value">
                                 ₱{(Array.isArray(currentOfficeData.equipment_details) ? currentOfficeData.equipment_details : [])
-                                    .reduce((sum, item) => sum + (parseFloat(item.cost) || 0), 0)
+                                    .reduce((sum, item) => sum + toHistoryNumber(item?.cost ?? item?.amount ?? item?.value ?? item?.total), 0)
                                     .toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </span>
                         </div>
@@ -582,7 +778,7 @@ const OfficeModal = ({
                                     <tr key={damage.id || idx}>
                                         <td>{idx + 1}</td>
                                         <td>{damage.description || 'No description'}</td>
-                                        <td>{(parseFloat(damage.cost) || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                        <td>{toHistoryNumber(damage?.cost ?? damage?.amount ?? damage?.value ?? damage?.total).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                                         <td><span className={`status-badge status-${(damage.status || 'reported').toLowerCase().replace(/\s+/g, '-')}`}>{damage.status || 'Reported'}</span></td>
                                     </tr>
                                 ))}
@@ -612,7 +808,7 @@ const OfficeModal = ({
                                         <td>{idx + 1}</td>
                                         <td>{equip.name || 'No name'}</td>
                                         <td>{equip.description || '—'}</td>
-                                        <td>{(parseFloat(equip.cost) || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                        <td>{toHistoryNumber(equip?.cost ?? equip?.amount ?? equip?.value ?? equip?.total).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                                         <td><span className={`status-badge status-${(equip.status || 'reported').toLowerCase().replace(/\s+/g, '-')}`}>{equip.status || 'Reported'}</span></td>
                                     </tr>
                                 ))}
@@ -1186,30 +1382,23 @@ const EventDetailsModal = ({
 // ===== TYPHOON HISTORY CONTENT =====
 const HistoryEventCard = ({ event, getAlertColor, setSelectedEvent, setShowDetailsModal }) => {
     const [expanded, setExpanded] = React.useState(false);
-    const snapshot = event.officesSnapshot || {};
+    const snapshot = getHistorySnapshot(event);
     const officeKeys = Object.keys(snapshot).filter(k => k !== 'PSTO-Region-1');
-
-    const totalBuildingCost = officeKeys.reduce((sum, k) =>
-        sum + (snapshot[k]?.damage_details || []).reduce((s, d) => s + (parseFloat(d.cost) || 0), 0), 0);
-    const totalEquipCost = officeKeys.reduce((sum, k) =>
-        sum + (snapshot[k]?.equipment_details || []).reduce((s, d) => s + (parseFloat(d.cost) || 0), 0), 0);
-    const totalStaff = officeKeys.reduce((sum, k) =>
-        sum + (snapshot[k]?.affected_staff || []).length, 0);
-    const totalCasualties = officeKeys.reduce((sum, k) =>
-        sum + (parseInt(snapshot[k]?.casualties) || 0), 0);
+    const historyTotals = getHistoryTotals(event);
+    const provinces = getHistoryProvinces(event);
 
     const fmtPeso = (n) => '₱' + n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
     return (
         <div className={`hist-card ${expanded ? 'hist-card-open' : ''}`}>
-            {/* ── Card header ── */}
             <div className="hist-card-header" onClick={() => setExpanded(v => !v)}>
                 <div className="hist-card-title-group">
                     <span className="hist-card-name">{event.name}</span>
                     <span className="alert-badge" style={{ background: getAlertColor(event.alertLevel), marginLeft: 8 }}>
                         {event.alertLevel || '—'}
                     </span>
-                    <span className="hist-card-cat">{event.category || ''}</span>
+                    {event.category && <span className="hist-card-cat">{event.category}</span>}
+                    <span className={`hist-status-badge status-${(event.status || 'archived').toLowerCase()}`}>{event.status?.toUpperCase() || 'ARCHIVED'}</span>
                 </div>
                 <div className="hist-card-meta">
                     <span>{event.date}</span>
@@ -1218,49 +1407,58 @@ const HistoryEventCard = ({ event, getAlertColor, setSelectedEvent, setShowDetai
                             Archived {new Date(event.archivedAt).toLocaleDateString()}
                         </span>
                     )}
+                    <span className="hist-card-tag">{provinces.length} province{provinces.length !== 1 ? 's' : ''}</span>
                     <span className="hist-chevron">{expanded ? '▲' : '▼'}</span>
                 </div>
             </div>
 
-            {/* ── Summary strip ── */}
             <div className="hist-summary-strip">
                 <div className="hist-stat">
                     <span className="hist-stat-label">Building Damage</span>
-                    <span className="hist-stat-value hist-stat-orange">{fmtPeso(totalBuildingCost)}</span>
+                    <span className="hist-stat-value hist-stat-orange">{fmtPeso(historyTotals.buildingCost)}</span>
                 </div>
                 <div className="hist-stat">
                     <span className="hist-stat-label">Equipment Damage</span>
-                    <span className="hist-stat-value hist-stat-green">{fmtPeso(totalEquipCost)}</span>
+                    <span className="hist-stat-value hist-stat-green">{fmtPeso(historyTotals.equipmentCost)}</span>
                 </div>
                 <div className="hist-stat">
                     <span className="hist-stat-label">Total Damage</span>
-                    <span className="hist-stat-value hist-stat-blue">{fmtPeso(totalBuildingCost + totalEquipCost)}</span>
+                    <span className="hist-stat-value hist-stat-blue">{fmtPeso(historyTotals.totalDamage)}</span>
                 </div>
                 <div className="hist-stat">
                     <span className="hist-stat-label">Casualties</span>
-                    <span className="hist-stat-value">{totalCasualties}</span>
+                    <span className="hist-stat-value">{historyTotals.casualtyCount}</span>
                 </div>
                 <div className="hist-stat">
                     <span className="hist-stat-label">Affected Staff</span>
-                    <span className="hist-stat-value">{totalStaff}</span>
+                    <span className="hist-stat-value">{historyTotals.staffCount}</span>
                 </div>
-                <button className="hist-detail-btn" onClick={() => { setSelectedEvent(event); setShowDetailsModal(true); }}>
+                <button
+                    className="hist-detail-btn"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedEvent(event);
+                        setShowDetailsModal(true);
+                    }}
+                >
                     View Details
                 </button>
             </div>
 
-            {/* ── Expanded PSTO breakdown ── */}
             {expanded && (
                 <div className="hist-body">
                     {officeKeys.length === 0 ? (
                         <p className="hist-empty">No PSTO snapshot available for this event.</p>
                     ) : officeKeys.map(office => {
                         const d = snapshot[office] || {};
-                        const bCost = (d.damage_details || []).reduce((s, x) => s + (parseFloat(x.cost) || 0), 0);
-                        const eCost = (d.equipment_details || []).reduce((s, x) => s + (parseFloat(x.cost) || 0), 0);
-                        const hasDamage = (d.damage_details || []).length > 0;
-                        const hasEquip = (d.equipment_details || []).length > 0;
-                        const hasStaff = (d.affected_staff || []).length > 0;
+                        const damageArray = getHistoryArray(d, ['damage_details', 'damageDetails', 'building_damage', 'buildingDamage', 'damageData']);
+                        const equipArray = getHistoryArray(d, ['equipment_details', 'equipmentDetails', 'equipment_damage', 'equipmentDamage', 'equipmentData']);
+                        const staffArray = getHistoryArray(d, ['affected_staff', 'affectedStaff', 'staffAffected', 'staff']);
+                        const bCost = damageArray.reduce((s, x) => s + toHistoryNumber(x?.cost ?? x?.amount ?? x?.value ?? x?.total), 0);
+                        const eCost = equipArray.reduce((s, x) => s + toHistoryNumber(x?.cost ?? x?.amount ?? x?.value ?? x?.total), 0);
+                        const hasDamage = damageArray.length > 0;
+                        const hasEquip = equipArray.length > 0;
+                        const hasStaff = staffArray.length > 0;
 
                         return (
                             <div key={office} className="hist-office-block">
@@ -1273,7 +1471,6 @@ const HistoryEventCard = ({ event, getAlertColor, setSelectedEvent, setShowDetai
                                     </div>
                                 </div>
 
-                                {/* Effects row */}
                                 <div className="hist-effects-row">
                                     {[
                                         { label: 'Casualties', val: d.casualties || 0 },
@@ -1288,18 +1485,17 @@ const HistoryEventCard = ({ event, getAlertColor, setSelectedEvent, setShowDetai
                                     ))}
                                 </div>
 
-                                {/* Damage Building table */}
                                 {hasDamage && (
                                     <div className="hist-sub-section">
                                         <div className="hist-sub-title">Damage Building</div>
                                         <table className="summary-table">
                                             <thead><tr><th>#</th><th>Description</th><th>Cost (₱)</th><th>Status</th></tr></thead>
                                             <tbody>
-                                                {d.damage_details.map((item, i) => (
+                                                {damageArray.map((item, i) => (
                                                     <tr key={i}>
                                                         <td>{i + 1}</td>
-                                                        <td>{item.description || '—'}</td>
-                                                        <td>{fmtPeso(parseFloat(item.cost) || 0)}</td>
+                                                        <td>{item.description || item.name || '—'}</td>
+                                                        <td>{fmtPeso(toHistoryNumber(item?.cost ?? item?.amount ?? item?.value ?? item?.total))}</td>
                                                         <td><span className={`status-badge status-${(item.status || 'reported').toLowerCase().replace(/\s+/g, '-')}`}>{item.status || 'Reported'}</span></td>
                                                     </tr>
                                                 ))}
@@ -1308,19 +1504,18 @@ const HistoryEventCard = ({ event, getAlertColor, setSelectedEvent, setShowDetai
                                     </div>
                                 )}
 
-                                {/* Equipment Damage table */}
                                 {hasEquip && (
                                     <div className="hist-sub-section">
                                         <div className="hist-sub-title">Equipment Damage</div>
                                         <table className="summary-table">
                                             <thead><tr><th>#</th><th>Name</th><th>Description</th><th>Cost (₱)</th><th>Status</th></tr></thead>
                                             <tbody>
-                                                {d.equipment_details.map((item, i) => (
+                                                {equipArray.map((item, i) => (
                                                     <tr key={i}>
                                                         <td>{i + 1}</td>
-                                                        <td>{item.name || '—'}</td>
-                                                        <td>{item.description || '—'}</td>
-                                                        <td>{fmtPeso(parseFloat(item.cost) || 0)}</td>
+                                                        <td>{item.name || item.description || '—'}</td>
+                                                        <td>{item.description || item.details || '—'}</td>
+                                                        <td>{fmtPeso(toHistoryNumber(item?.cost ?? item?.amount ?? item?.value ?? item?.total))}</td>
                                                         <td><span className={`status-badge status-${(item.status || 'reported').toLowerCase().replace(/\s+/g, '-')}`}>{item.status || 'Reported'}</span></td>
                                                     </tr>
                                                 ))}
@@ -1329,14 +1524,13 @@ const HistoryEventCard = ({ event, getAlertColor, setSelectedEvent, setShowDetai
                                     </div>
                                 )}
 
-                                {/* Affected Staff table */}
                                 {hasStaff && (
                                     <div className="hist-sub-section">
                                         <div className="hist-sub-title">Affected Staff</div>
                                         <table className="summary-table">
                                             <thead><tr><th>#</th><th>Name</th><th>Area</th><th>Assistance</th><th>Status</th></tr></thead>
                                             <tbody>
-                                                {d.affected_staff.map((item, i) => (
+                                                {staffArray.map((item, i) => (
                                                     <tr key={i}>
                                                         <td>{i + 1}</td>
                                                         <td>{item.name || '—'}</td>
@@ -1357,30 +1551,29 @@ const HistoryEventCard = ({ event, getAlertColor, setSelectedEvent, setShowDetai
                         );
                     })}
 
-                    {/* ── Event PSTO Total row ── */}
                     {officeKeys.length > 0 && (
                         <div className="hist-psto-total-row">
                             <div className="hist-psto-total-label">Event PSTO Total</div>
                             <div className="hist-psto-total-stats">
                                 <div className="hist-psto-total-stat">
                                     <span className="hist-psto-total-key">Building Damage</span>
-                                    <span className="hist-psto-total-val hist-stat-orange">{fmtPeso(totalBuildingCost)}</span>
+                                    <span className="hist-psto-total-val hist-stat-orange">{fmtPeso(historyTotals.buildingCost)}</span>
                                 </div>
                                 <div className="hist-psto-total-stat">
                                     <span className="hist-psto-total-key">Equipment Damage</span>
-                                    <span className="hist-psto-total-val hist-stat-green">{fmtPeso(totalEquipCost)}</span>
+                                    <span className="hist-psto-total-val hist-stat-green">{fmtPeso(historyTotals.equipmentCost)}</span>
                                 </div>
                                 <div className="hist-psto-total-stat">
                                     <span className="hist-psto-total-key">Combined Damage</span>
-                                    <span className="hist-psto-total-val hist-stat-blue">{fmtPeso(totalBuildingCost + totalEquipCost)}</span>
+                                    <span className="hist-psto-total-val hist-stat-blue">{fmtPeso(historyTotals.totalDamage)}</span>
                                 </div>
                                 <div className="hist-psto-total-stat">
                                     <span className="hist-psto-total-key">Casualties</span>
-                                    <span className="hist-psto-total-val">{totalCasualties}</span>
+                                    <span className="hist-psto-total-val">{historyTotals.casualtyCount}</span>
                                 </div>
                                 <div className="hist-psto-total-stat">
                                     <span className="hist-psto-total-key">Affected Staff</span>
-                                    <span className="hist-psto-total-val">{totalStaff}</span>
+                                    <span className="hist-psto-total-val">{historyTotals.staffCount}</span>
                                 </div>
                             </div>
                         </div>
@@ -1392,34 +1585,32 @@ const HistoryEventCard = ({ event, getAlertColor, setSelectedEvent, setShowDetai
 };
 
 const TyphoonHistoryContent = ({ typhoonHistory, searchTerm, setSearchTerm, handleSearchChange, setSelectedEvent, setShowDetailsModal, getAlertColor }) => {
-    const filtered = (typhoonHistory || []).filter(e =>
-        !searchTerm || e.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        e.category?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const normalizedSearch = (searchTerm || '').trim().toLowerCase();
+    const filtered = (typhoonHistory || []).filter(e => {
+        if (!normalizedSearch) return true;
+        const provinceMatches = getHistoryProvinces(e).some(p => p.toLowerCase().includes(normalizedSearch));
+        return e.name?.toLowerCase().includes(normalizedSearch) ||
+            e.category?.toLowerCase().includes(normalizedSearch) ||
+            provinceMatches;
+    });
+
+    const sortedEvents = [...filtered].sort((a, b) => {
+        const aDate = new Date(a.archivedAt || a.date || 0).getTime();
+        const bDate = new Date(b.archivedAt || b.date || 0).getTime();
+        return bDate - aDate;
+    });
 
     const fmtPeso = (n) => '₱' + n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
     // Cumulative totals across ALL archived events (not filtered, so always shows full picture)
     const allEvents = typhoonHistory || [];
-    const getOfficeKeys = (snap) => Object.keys(snap || {}).filter(k => k !== 'PSTO-Region-1');
-    const cumBuilding = allEvents.reduce((sum, e) => {
-        const snap = e.officesSnapshot || {};
-        return sum + getOfficeKeys(snap).reduce((s, k) =>
-            s + (snap[k]?.damage_details || []).reduce((ss, d) => ss + (parseFloat(d.cost) || 0), 0), 0);
-    }, 0);
-    const cumEquip = allEvents.reduce((sum, e) => {
-        const snap = e.officesSnapshot || {};
-        return sum + getOfficeKeys(snap).reduce((s, k) =>
-            s + (snap[k]?.equipment_details || []).reduce((ss, d) => ss + (parseFloat(d.cost) || 0), 0), 0);
-    }, 0);
-    const cumCasualties = allEvents.reduce((sum, e) => {
-        const snap = e.officesSnapshot || {};
-        return sum + getOfficeKeys(snap).reduce((s, k) => s + (parseInt(snap[k]?.casualties) || 0), 0);
-    }, 0);
-    const cumStaff = allEvents.reduce((sum, e) => {
-        const snap = e.officesSnapshot || {};
-        return sum + getOfficeKeys(snap).reduce((s, k) => s + (snap[k]?.affected_staff || []).length, 0);
-    }, 0);
+    const uniqueProvinces = [...new Set(allEvents.flatMap(e => e.provinces || []))].length;
+    const totalsByEvent = allEvents.map(getHistoryTotals);
+    const totalRecordedOffices = totalsByEvent.reduce((sum, totals) => sum + totals.officeCount, 0);
+    const cumBuilding = totalsByEvent.reduce((sum, totals) => sum + totals.buildingCost, 0);
+    const cumEquip = totalsByEvent.reduce((sum, totals) => sum + totals.equipmentCost, 0);
+    const cumCasualties = totalsByEvent.reduce((sum, totals) => sum + totals.casualtyCount, 0);
+    const cumStaff = totalsByEvent.reduce((sum, totals) => sum + totals.staffCount, 0);
 
     return (
         <div className="events-management">
@@ -1474,14 +1665,14 @@ const TyphoonHistoryContent = ({ typhoonHistory, searchTerm, setSearchTerm, hand
             )}
 
             <div className="events-subtitle">
-                {filtered.length} archived event{filtered.length !== 1 ? 's' : ''} — click a card to expand PSTO damage breakdown
+                {sortedEvents.length} archived event{sortedEvents.length !== 1 ? 's' : ''} • {uniqueProvinces} province{uniqueProvinces !== 1 ? 's' : ''} impacted • {totalRecordedOffices} PSTO office snapshot{totalRecordedOffices !== 1 ? 's' : ''}
             </div>
 
-            {filtered.length === 0 ? (
+            {sortedEvents.length === 0 ? (
                 <div className="hist-empty-state">No typhoon history available yet.<br />Events will appear here after a new event is deployed.</div>
             ) : (
                 <div className="hist-list">
-                    {filtered.map(event => (
+                    {sortedEvents.map(event => (
                         <HistoryEventCard
                             key={event.id}
                             event={event}
