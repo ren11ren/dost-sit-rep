@@ -2,6 +2,28 @@ version: '3.8'
 
 services:
   # ==========================================
+  # PostgreSQL Database
+  # ==========================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: dost-postgres
+    environment:
+      POSTGRES_USER: dostuser
+      POSTGRES_PASSWORD: dostpass
+      POSTGRES_DB: dostdb
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U dostuser -d dostdb" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - dost-net
+
+  # ==========================================
   # Express API Backend
   # ==========================================
   backend:
@@ -20,14 +42,17 @@ services:
       - /app/node_modules
     environment:
       - NODE_ENV=development
-      - DATABASE_URL=postgres://avnadmin:AVNS_KDnWpvaIZYYBAojZYZV@pg-d9b811c-raigana362-999a.b.aivencloud.com:22998/defaultdb?sslmode=require
-      - DB_HOST=pg-d9b811c-raigana362-999a.b.aivencloud.com
-      - DB_PORT=22998
-      - DB_USER=avnadmin
-      - DB_PASSWORD=AVNS_KDnWpvaIZYYBAojZYZV
-      - DB_NAME=defaultdb
+      - DATABASE_URL=postgres://dostuser:dostpass@postgres:5432/dostdb
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=dostuser
+      - DB_PASSWORD=dostpass
+      - DB_NAME=dostdb
     env_file:
       - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
     networks:
       - dost-net
 
@@ -56,6 +81,26 @@ services:
     networks:
       - dost-net
 
+  # ==========================================
+  # Ngrok tunnel for public preview
+  # ==========================================
+  ngrok:
+    image: ngrok/ngrok:latest
+    container_name: dost-ngrok
+    restart: unless-stopped
+    environment:
+      NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN:-}
+    command:
+      - http
+      - http://frontend:3000
+    depends_on:
+      - frontend
+    networks:
+      - dost-net
+
 networks:
   dost-net:
     driver: bridge
+
+volumes:
+  postgres-data:

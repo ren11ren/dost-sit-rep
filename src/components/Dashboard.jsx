@@ -58,7 +58,7 @@ const STORAGE_KEYS = {
 };
 
 const INITIAL_SETTINGS = {
-    systemName: 'DOST Region 1 Disaster Management',
+    systemName: 'DOST Ilocos Region  Disaster Management',
     notificationSound: true,
     autoArchiveDays: 7,
     darkMode: false,
@@ -296,7 +296,7 @@ const Dashboard = ({ onLogout, currentUser }) => {
         }), [normalizedRole]);
 
         const { isSuperAdmin, isAdmin, isUser } = userPermissions;
-        const canManageUsers = isSuperAdmin;
+        const canManageUsers = isSuperAdmin || isAdmin;
         const canEditEvents = isSuperAdmin || isAdmin;
         const canDeployEvents = isSuperAdmin;
         const canRejectEvents = isSuperAdmin;
@@ -355,6 +355,25 @@ const Dashboard = ({ onLogout, currentUser }) => {
 
         const [typhoonHistory, setTyphoonHistory] = useLocalStorage(STORAGE_KEYS.HISTORY, []);
         const [users, setUsers] = useLocalStorage(STORAGE_KEYS.USERS, DEFAULT_USERS);
+        // Ensure defaults are present if stored users are missing or incomplete
+        useEffect(() => {
+            try {
+                if (!Array.isArray(users) || users.length === 0) {
+                    setUsers(DEFAULT_USERS);
+                    return;
+                }
+                if (Array.isArray(users) && users.length < DEFAULT_USERS.length) {
+                    const existingEmails = new Set(users.map(u => (u.email || '').toLowerCase()));
+                    const missing = DEFAULT_USERS.filter(u => !existingEmails.has((u.email || '').toLowerCase()));
+                    if (missing.length > 0) {
+                        const merged = [...users, ...missing];
+                        setUsers(merged);
+                    }
+                }
+            } catch (e) {
+                console.error('merge default users error:', e);
+            }
+        }, [users, setUsers]);
         const [pendingReports, setPendingReports] = useLocalStorage(STORAGE_KEYS.REPORTS, []);
         const [notifications, setNotifications] = useLocalStorage(STORAGE_KEYS.NOTIFICATIONS, []);
         const [activeMenu, setActiveMenu] = useLocalStorage(STORAGE_KEYS.ACTIVE_MENU, 'dashboard');
@@ -2494,6 +2513,86 @@ const Dashboard = ({ onLogout, currentUser }) => {
                 reportData.push(['Regional Director']);
 
                 const ws = XLSX.utils.aoa_to_sheet(reportData);
+
+                // Set professional column widths
+                ws['!cols'] = [
+                    { wch: 20 }, { wch: 35 }, { wch: 35 }, { wch: 20 }, { wch: 20 }
+                ].concat(Array(95).fill({ wch: 18 }));
+
+                // Define styles
+                const titleStyle = { 
+                    fill: { fgColor: { rgb: 'FF203864' } }, 
+                    font: { bold: true, color: { rgb: 'FFFFFFFF' }, size: 14 }, 
+                    alignment: { horizontal: 'left', vertical: 'center' },
+                    border: { bottom: { style: 'medium' } }
+                };
+                const headerStyle = { 
+                    fill: { fgColor: { rgb: 'FF4472C4' } }, 
+                    font: { bold: true, color: { rgb: 'FFFFFFFF' } }, 
+                    alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+                    border: { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } }
+                };
+                const sectionHeaderStyle = {
+                    fill: { fgColor: { rgb: 'FF70AD47' } },
+                    font: { bold: true, color: { rgb: 'FFFFFFFF' } },
+                    alignment: { horizontal: 'left', vertical: 'center' },
+                    border: { bottom: { style: 'thin' } }
+                };
+                const dataStyle = { 
+                    alignment: { horizontal: 'left', vertical: 'top', wrapText: true },
+                    border: { top: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' }, bottom: { style: 'thin' } }
+                };
+
+                // Apply styles to cells
+                let rowNum = 1;
+                // Title row
+                if (ws[`A${rowNum}`]) ws[`A${rowNum}`].s = titleStyle;
+                
+                // Apply header styles to all header rows
+                for (const cellRef in ws) {
+                    if (cellRef.match(/^[A-Z]+\d+$/)) {
+                        const row = parseInt(cellRef.match(/\d+$/)[0]);
+                        const col = cellRef.match(/^[A-Z]+/)[0];
+                        const cellValue = ws[cellRef]?.v;
+                        
+                        // Apply title style to main title
+                        if (row === 1) {
+                            ws[cellRef].s = titleStyle;
+                        }
+                        // Apply section header style to roman numeral sections (I., II., III., etc.)
+                        else if (cellValue && String(cellValue).match(/^(I+|IV|IX|X+)\./)) {
+                            ws[cellRef].s = sectionHeaderStyle;
+                        }
+                        // Apply section header style to subsection headers (A., B., C., etc.)
+                        else if (cellValue && String(cellValue).match(/^[A-G]\./)) {
+                            ws[cellRef].s = sectionHeaderStyle;
+                        }
+                        // Apply header style to table headers (PROVINCE, INCIDENTS, REMARKS, etc.)
+                        else if (cellValue && (String(cellValue).includes('PROVINCE') || String(cellValue).includes('OFFICE') || 
+                                              String(cellValue).includes('INCIDENTS') || String(cellValue).includes('REMARKS') ||
+                                              String(cellValue).includes('TROPICAL CYCLONE') || String(cellValue).includes('GENERAL WEATHER') ||
+                                              String(cellValue).includes('CASUALTIES') || String(cellValue).includes('POWER') ||
+                                              String(cellValue).includes('COMMUNICATION') || String(cellValue).includes('DAMAGE') ||
+                                              String(cellValue).includes('SUSPENSION') || String(cellValue).includes('ASSISTANCE') ||
+                                              String(cellValue).includes('DESCRIPTION') || String(cellValue).includes('COST') ||
+                                              String(cellValue).includes('STATUS') || String(cellValue).includes('DATE') ||
+                                              String(cellValue).includes('EQUIPMENT') || String(cellValue).includes('STAFF') ||
+                                              String(cellValue).includes('AREA') || String(cellValue).includes('NAME'))) {
+                            ws[cellRef].s = headerStyle;
+                        }
+                        // Apply data style with wrapping
+                        else if (!ws[cellRef].s) {
+                            ws[cellRef].s = dataStyle;
+                        }
+                    }
+                }
+                
+                // Set row heights for better visibility
+                ws['!rows'] = [];
+                ws['!rows'][0] = { hpt: 25 }; // Title row
+                ws['!rows'][10] = { hpt: 20 }; // Header rows
+                ws['!rows'][22] = { hpt: 20 };
+
                 XLSX.utils.book_append_sheet(wb, ws, 'SITREP');
 
                 // Raw data sheet
@@ -2528,10 +2627,30 @@ const Dashboard = ({ onLogout, currentUser }) => {
                 });
 
                 const wsRaw = XLSX.utils.aoa_to_sheet(rawData);
+
+                // Set compact uniform column widths for alignment
+                wsRaw['!cols'] = Array(headers.length).fill({ wch: 15 });
+
+                // Format header row in raw data
+                headers.forEach((_, idx) => {
+                    const cellRef = XLSX.utils.encode_col(idx) + '1';
+                    if (wsRaw[cellRef]) {
+                        wsRaw[cellRef].s = { ...headerStyle };
+                    }
+                });
+
+                // Enable wrapping for all cells in raw data
+                for (const key in wsRaw) {
+                    if (key.match(/^[A-Z]+\d+$/)) {
+                        if (!wsRaw[key].s) wsRaw[key].s = {};
+                        wsRaw[key].s.alignment = { ...wsRaw[key].s.alignment, wrapText: true };
+                    }
+                }
+
                 XLSX.utils.book_append_sheet(wb, wsRaw, 'Raw Data');
                 XLSX.writeFile(wb, `SITREP_${activeEvent?.name || 'NO_EVENT'}_${new Date().toISOString().slice(0, 19)}.xlsx`);
                 showToast('Situational Report exported successfully.', 'success');
-                addNotification('Excel Exported', 'Complete SITREP exported with table formatting.', 'success');
+                addNotification('Excel Exported', 'Complete SITREP exported with proper formatting.', 'success');
             } catch (e) {
                 console.error('handleExportExcel error:', e);
                 showToast('Failed to export Excel.', 'error');
@@ -2694,28 +2813,16 @@ const Dashboard = ({ onLogout, currentUser }) => {
                             <tbody>${reportOffices.map(([officeName, officeData]) => {
                     const buildingDamages = (officeData.damage_details || []).map(d =>
                         `<div>${d.description || ''}${d.cost ? ` - ₱${d.cost}` : ''}${d.status ? ` (${d.status})` : ''}${d.image ? ` <img src="${d.image}" style="max-width:50px;max-height:50px;" />` : ''}</div>`
-                    ).join('') || 'No damage details';
-                    return `<tr><td style="border:1px solid #000;padding:8px;">${officeName}</td><td style="border:1px solid #000;padding:8px;">${buildingDamages}</td></tr>`;
-                }).join('')}</tbody>
-                        </table>
-
-                        <h3>IV. DAMAGE EQUIPMENT</h3>
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>OFFICE</th>
-                                    <th>EQUIPMENT RECORDS</th>
-                                </tr>
-                            </thead>
-                            <tbody>${reportOffices.map(([officeName, officeData]) => {
+                    ).join('');
                     const equipmentDamages = (officeData.equipment_details || []).map(e =>
                         `<div>${e.name || ''}${e.description ? ` - ${e.description}` : ''}${e.cost ? ` - ₱${e.cost}` : ''}${e.status ? ` (${e.status})` : ''}${e.image ? ` <img src="${e.image}" style="max-width:50px;max-height:50px;" />` : ''}</div>`
-                    ).join('') || 'No equipment damage details';
-                    return `<tr><td style="border:1px solid #000;padding:8px;">${officeName}</td><td style="border:1px solid #000;padding:8px;">${equipmentDamages}</td></tr>`;
+                    ).join('');
+                    const damages = (buildingDamages + equipmentDamages) || 'No damage details';
+                    return `<tr><td style="border:1px solid #000;padding:8px;">${officeName}</td><td style="border:1px solid #000;padding:8px;">${damages}</td></tr>`;
                 }).join('')}</tbody>
                         </table>
 
-                        <h3>V. AFFECTED STAFF</h3>
+                        <h3>IV. AFFECTED STAFF</h3>
                         <table>
                             <thead>
                                 <tr>
@@ -3043,7 +3150,7 @@ const Dashboard = ({ onLogout, currentUser }) => {
                                                                     <input
                                                                         type="number"
                                                                         name="related_incidents"
-                                                                        value={displayEvent.related_incidents}
+                                                                        value={reportFormData?.related_incidents || 0}
                                                                         onChange={(e) => handleReportFieldChange('related_incidents', parseInt(e.target.value, 10) || 0)}
                                                                     />
                                                                 </div>
@@ -3052,7 +3159,7 @@ const Dashboard = ({ onLogout, currentUser }) => {
                                                                     <input
                                                                         type="text"
                                                                         name="remark_related_incidents"
-                                                                        value={displayEvent.remark_related_incidents || ''}
+                                                                        value={reportFormData?.remark_related_incidents || ''}
                                                                         onChange={(e) => handleReportFieldChange('remark_related_incidents', e.target.value)}
                                                                     />
                                                                 </div>
@@ -3063,7 +3170,7 @@ const Dashboard = ({ onLogout, currentUser }) => {
                                                                     <input
                                                                         type="number"
                                                                         name="casualties"
-                                                                        value={displayEvent.casualties}
+                                                                        value={reportFormData?.casualties || 0}
                                                                         onChange={(e) => handleReportFieldChange('casualties', parseInt(e.target.value, 10) || 0)}
                                                                     />
                                                                 </div>
@@ -3072,7 +3179,7 @@ const Dashboard = ({ onLogout, currentUser }) => {
                                                                     <input
                                                                         type="text"
                                                                         name="remark_casualties"
-                                                                        value={displayEvent.remark_casualties || ''}
+                                                                        value={reportFormData?.remark_casualties || ''}
                                                                         onChange={(e) => handleReportFieldChange('remark_casualties', e.target.value)}
                                                                     />
                                                                 </div>
@@ -3083,7 +3190,7 @@ const Dashboard = ({ onLogout, currentUser }) => {
                                                                     <input
                                                                         type="text"
                                                                         name="power_status"
-                                                                        value={displayEvent.power_status}
+                                                                        value={reportFormData?.power_status || ''}
                                                                         onChange={(e) => handleReportFieldChange('power_status', e.target.value)}
                                                                     />
                                                                 </div>
@@ -3092,7 +3199,7 @@ const Dashboard = ({ onLogout, currentUser }) => {
                                                                     <input
                                                                         type="text"
                                                                         name="remark_power_status"
-                                                                        value={displayEvent.remark_power_status || ''}
+                                                                        value={reportFormData?.remark_power_status || ''}
                                                                         onChange={(e) => handleReportFieldChange('remark_power_status', e.target.value)}
                                                                     />
                                                                 </div>
@@ -3103,7 +3210,7 @@ const Dashboard = ({ onLogout, currentUser }) => {
                                                                     <input
                                                                         type="text"
                                                                         name="communication_lines"
-                                                                        value={displayEvent.communication_lines}
+                                                                        value={reportFormData?.communication_lines || ''}
                                                                         onChange={(e) => handleReportFieldChange('communication_lines', e.target.value)}
                                                                     />
                                                                 </div>
@@ -3112,7 +3219,7 @@ const Dashboard = ({ onLogout, currentUser }) => {
                                                                     <input
                                                                         type="text"
                                                                         name="remark_communication_lines"
-                                                                        value={displayEvent.remark_communication_lines || ''}
+                                                                        value={reportFormData?.remark_communication_lines || ''}
                                                                         onChange={(e) => handleReportFieldChange('remark_communication_lines', e.target.value)}
                                                                     />
                                                                 </div>
@@ -3123,7 +3230,7 @@ const Dashboard = ({ onLogout, currentUser }) => {
                                                                     <input
                                                                         type="text"
                                                                         name="damage_facilities"
-                                                                        value={displayEvent.damage_facilities}
+                                                                        value={reportFormData?.damage_facilities || ''}
                                                                         onChange={(e) => handleReportFieldChange('damage_facilities', e.target.value)}
                                                                     />
                                                                 </div>
@@ -3132,7 +3239,7 @@ const Dashboard = ({ onLogout, currentUser }) => {
                                                                     <input
                                                                         type="text"
                                                                         name="remark_damage_facilities"
-                                                                        value={displayEvent.remark_damage_facilities || ''}
+                                                                        value={reportFormData?.remark_damage_facilities || ''}
                                                                         onChange={(e) => handleReportFieldChange('remark_damage_facilities', e.target.value)}
                                                                     />
                                                                 </div>
@@ -3143,7 +3250,7 @@ const Dashboard = ({ onLogout, currentUser }) => {
                                                                         <input
                                                                             type="checkbox"
                                                                             name="work_suspension"
-                                                                            checked={displayEvent.work_suspension}
+                                                                            checked={reportFormData?.work_suspension || false}
                                                                             onChange={(e) => handleReportFieldChange('work_suspension', e.target.checked)}
                                                                         /> Work Suspension
                                                                     </label>
@@ -3153,7 +3260,7 @@ const Dashboard = ({ onLogout, currentUser }) => {
                                                                     <input
                                                                         type="text"
                                                                         name="remark_work_suspension"
-                                                                        value={displayEvent.remark_work_suspension || ''}
+                                                                        value={reportFormData?.remark_work_suspension || ''}
                                                                         onChange={(e) => handleReportFieldChange('remark_work_suspension', e.target.value)}
                                                                     />
                                                                 </div>
@@ -3164,7 +3271,7 @@ const Dashboard = ({ onLogout, currentUser }) => {
                                                                     <input
                                                                         type="text"
                                                                         name="assistance_provided"
-                                                                        value={displayEvent.assistance_provided}
+                                                                        value={reportFormData?.assistance_provided || ''}
                                                                         onChange={(e) => handleReportFieldChange('assistance_provided', e.target.value)}
                                                                     />
                                                                 </div>
@@ -3173,7 +3280,7 @@ const Dashboard = ({ onLogout, currentUser }) => {
                                                                     <input
                                                                         type="text"
                                                                         name="remark_assistance_provided"
-                                                                        value={displayEvent.remark_assistance_provided || ''}
+                                                                        value={reportFormData?.remark_assistance_provided || ''}
                                                                         onChange={(e) => handleReportFieldChange('remark_assistance_provided', e.target.value)}
                                                                     />
                                                                 </div>

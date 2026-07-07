@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './Login.css';
 
 const DOST_LOGO = 'data:image/svg+xml,' + encodeURIComponent(`
@@ -13,6 +13,14 @@ const DOST_LOGO = 'data:image/svg+xml,' + encodeURIComponent(`
   <text x="100" y="170" text-anchor="middle" fill="#ffd700" font-family="Arial, sans-serif" font-size="14">★</text>
 </svg>
 `);
+
+// Candidate public image paths (will use the first one that loads successfully).
+const CANDIDATE_HERO_PATHS = [
+  (process.env.PUBLIC_URL || '') + '/dost.png',
+  (process.env.PUBLIC_URL || '') + '/1000037169.jpg',
+  (process.env.PUBLIC_URL || '') + '/ilocos_norte.jpg',
+  (process.env.PUBLIC_URL || '') + '/sample-image.svg'
+];
 
 const DEMO_ACCOUNTS = [
   { role: 'SADMIN', label: 'Super Admin', email: 'admin@dostregion1.ph', password: 'admin123' },
@@ -74,6 +82,8 @@ const Login = ({ onLogin }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [showDemoAccounts, setShowDemoAccounts] = useState(false);
+  const [showHeroImage, setShowHeroImage] = useState(false);
+  const [heroPath, setHeroPath] = useState(null);
 
   const completeLogin = (user) => {
     const { password: _, ...safeUser } = user;
@@ -121,23 +131,51 @@ const Login = ({ onLogin }) => {
       setEmail(rememberedEmail);
       setRememberMe(true);
     }
+    // Probe candidate public paths and pick the first that loads
+    (async () => {
+      for (const p of CANDIDATE_HERO_PATHS) {
+        try {
+          await new Promise((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => resolve(true);
+            img.onerror = () => reject(new Error('not-found'));
+            img.src = p;
+          });
+          setHeroPath(p);
+          setShowHeroImage(true);
+          return;
+        } catch (e) {
+          // try next
+        }
+      }
+      setShowHeroImage(false);
+    })();
   }, []);
 
   return (
     <div className="login-page">
       <div className="login-brand-panel">
-        <div className="login-brand-content">
-          <img src={DOST_LOGO} alt="DOST Region 1" className="login-brand-logo" />
-          <h1>DOST Region 1</h1>
+        <div className={`login-brand-content ${showHeroImage ? 'has-hero' : ''}`}>
+          {showHeroImage && heroPath ? (
+            <img src={heroPath} alt="DOST Region 1" className="login-hero-photo" />
+          ) : (
+            <img src={DOST_LOGO} alt="DOST Region 1" className="login-brand-logo" />
+          )}
+          <h1>DOST ILOCOS REGION</h1>
           <p className="login-brand-tagline">Disaster Management Dashboard</p>
-          <p className="login-brand-description">
-            Coordinate situation reports, track typhoons, and manage PSTO offices across the Ilocos Region.
-          </p>
-          <ul className="login-brand-features">
-            <li>Real-time situation reporting</li>
-            <li>Typhoon event management</li>
-            <li>Multi-office coordination</li>
-          </ul>
+          {/* When a hero photo is shown, hide the descriptive text and feature list so the image can take center stage */}
+          {!showHeroImage && (
+            <>
+              <p className="login-brand-description">
+                Coordinate situation reports, track typhoons, and manage PSTO offices across the Ilocos Region.
+              </p>
+              <ul className="login-brand-features">
+                <li>Real-time situation reporting</li>
+                <li>Typhoon event management</li>
+                <li>Multi-office coordination</li>
+              </ul>
+            </>
+          )}
         </div>
         <div className="login-brand-pattern" aria-hidden="true" />
       </div>

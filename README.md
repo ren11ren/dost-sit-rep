@@ -41,6 +41,41 @@ npm run dev
 
 This runs the Express backend on port `5010` and the React dev server on `5006` (see `package.json` scripts). If ports are occupied, kill the stale processes or update the env vars.
 
+4. Optional public preview with Ngrok
+
+If you want a public URL for the frontend, add your Ngrok auth token to your shell or `.env` file:
+
+```bash
+export NGROK_AUTHTOKEN=your_token_here
+```
+
+Then start the tunnel for the local app:
+
+```bash
+npm run ngrok
+```
+
+or directly:
+
+```bash
+ngrok http 5006 --host-header=localhost:5006
+```
+
+Important:
+- do not run `ngrok http` with no port, because that defaults to `localhost:80`
+- do not use `ngrok http 80` unless your app is actually served on port 80
+
+The correct target for this project is `5006`, which is the CRA dev server port.
+
+If you still see `Invalid Host header`, stop any existing ngrok tunnels and restart it:
+
+```bash
+pkill -f ngrok || true
+npm run ngrok
+```
+
+If you want to use Docker Compose with Ngrok instead, make sure the frontend is exposed on the same port that Ngrok forwards.
+
 4. Useful commands
 
 - Run tests (CI mode):

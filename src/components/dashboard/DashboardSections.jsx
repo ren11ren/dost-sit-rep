@@ -147,30 +147,6 @@ const DEFAULT_OFFICE_DATA = {
         equipment_details: [],
         affected_staff: []
     },
-    'PSTO-Ilocos Region': {
-        warning_signals: {},
-        general_weather: '',
-        related_incidents: 0,
-        casualties: 0,
-        power_status: '',
-        communication_lines: '',
-        damage_facilities: '',
-        work_suspension: false,
-        assistance_provided: '',
-        remark: '',
-        remark_related_incidents: '',
-        remark_casualties: '',
-        remark_power_status: '',
-        remark_communication_lines: '',
-        remark_damage_facilities: '',
-        remark_work_suspension: '',
-        remark_assistance_provided: '',
-        imageUrl: '',
-        municipalities: ['Laoag City', 'Vigan City', 'San Fernando', 'Lingayen'],
-        damage_details: [],
-        equipment_details: [],
-        affected_staff: []
-    },
 };
 
 // Typhoon History Storage
@@ -186,7 +162,13 @@ const DEFAULT_USERS = [
     { id: 5, name: 'Pangasinan User', email: 'user-pangasinan@dostregion1.ph', office: 'PSTO-Pangasinan', role: 'USER', status: 'Active', password: 'user123', profileImage: '' },
     { id: 6, name: 'Ilocos Sur User', email: 'user-ilocossur2@dostregion1.ph', office: 'PSTO-Ilocos Sur', role: 'USER', status: 'Active', password: 'user123', profileImage: '' },
     { id: 7, name: 'Ilocos Norte User', email: 'user-ilocosnorte@dostregion1.ph', office: 'PSTO-Ilocos Norte', role: 'USER', status: 'Active', password: 'user123', profileImage: '' },
-    { id: 8, name: 'Ilocos Sur User 3', email: 'user-ilocossur3@dostregion1.ph', office: 'PSTO-Ilocos Sur', role: 'USER', status: 'Active', password: 'user123', profileImage: '' },
+    { id: 8, name: 'Ilocos Sur FO Admin', email: 'admin-ilocossur-fo@dostregion1.ph', office: 'PSTO-Ilocos Sur - FO', role: 'ADMIN', status: 'Active', password: 'admin123', profileImage: '' },
+    { id: 9, name: 'Ilocos Sur FO User', email: 'user-ilocossur-fo@dostregion1.ph', office: 'PSTO-Ilocos Sur - FO', role: 'USER', status: 'Active', password: 'user123', profileImage: '' },
+    { id: 10, name: 'Pangasinan FO Admin', email: 'admin-pangasinan-fo@dostregion1.ph', office: 'PSTO-Pangasinan - FO', role: 'ADMIN', status: 'Active', password: 'admin123', profileImage: '' },
+    { id: 11, name: 'Pangasinan FO User', email: 'user-pangasinan-fo@dostregion1.ph', office: 'PSTO-Pangasinan - FO', role: 'USER', status: 'Active', password: 'user123', profileImage: '' },
+    { id: 12, name: 'Ilocos Sur User 3', email: 'user-ilocossur3@dostregion1.ph', office: 'PSTO-Ilocos Sur', role: 'USER', status: 'Active', password: 'user123', profileImage: '' },
+    { id: 13, name: 'Region Coordinator', email: 'coordinator-ilocos@dostregion1.ph', office: 'PSTO-Ilocos Region', role: 'ADMIN', status: 'Active', password: 'admin123', profileImage: '' },
+    { id: 14, name: 'Region User', email: 'user-ilocos-region@dostregion1.ph', office: 'PSTO-Ilocos Region', role: 'USER', status: 'Active', password: 'user123', profileImage: '' },
 ];
 
 // Helper functions
@@ -1234,6 +1216,7 @@ const EventDetailsModal = ({
     const fmtPeso = (n) => '₱' + Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const snapshot = getHistorySnapshot(selectedEvent);
     const snapshotKeys = Object.keys(snapshot).filter(k => k !== 'PSTO-Region-1');
+    const isHistoryEvent = Boolean(selectedEvent?.archivedAt || selectedEvent?.status?.toLowerCase() === 'archived');
 
     return (
         <>
@@ -1403,7 +1386,9 @@ const EventDetailsModal = ({
                     <div className="modal-buttons details-actions">
                         {canEditEvents && (
                             <>
-                                <button className="btn-danger" onClick={() => handleDeleteEvent(selectedEvent.id)}>🗑️ Delete</button>
+                                {!isHistoryEvent && (
+                                    <button className="btn-danger" onClick={() => handleDeleteEvent(selectedEvent.id)}>🗑️ Delete</button>
+                                )}
                                 <button className="btn-primary" onClick={() => handleEditEvent(selectedEvent)}>✏️ Edit</button>
                                 {selectedEvent.status === 'pending' && (
                                     <button className="btn-danger" onClick={handleRejectClick}>🚫 Reject</button>

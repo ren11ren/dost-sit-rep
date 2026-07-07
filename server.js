@@ -7,6 +7,9 @@ dotenv.config();
 
 const app = express();
 const port = parseInt(process.env.PORT, 10) || 5010;
+const allowDegradedDatabaseMode = process.env.ALLOW_DEGRADED_DB_MODE !== 'false';
+let databaseReady = false;
+let databaseError = null;
 
 const allowedOriginRegex = /^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)(:\d+)?$/;
 
@@ -55,6 +58,32 @@ const getPgConfig = () => {
 };
 
 const rawPool = new Pool(getPgConfig());
+rawPool.on('error', (err) => {
+    console.error('⚠️ Unexpected PostgreSQL pool error:', err.message);
+});
+
+const waitForDatabase = async () => {
+    const maxAttempts = parseInt(process.env.DB_CONNECT_RETRIES || '5', 10);
+    const delayMs = parseInt(process.env.DB_CONNECT_RETRY_DELAY_MS || '1000', 10);
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+        try {
+            await rawPool.query('SELECT 1');
+            databaseReady = true;
+            databaseError = null;
+            return true;
+        } catch (err) {
+            databaseError = err;
+            if (attempt === maxAttempts) {
+                return false;
+            }
+            console.log(`⏳ Waiting for PostgreSQL (${attempt}/${maxAttempts})... ${err.message}`);
+            await new Promise((resolve) => setTimeout(resolve, delayMs));
+        }
+    }
+
+    return false;
+};
 
 // Converts legacy mysql-style placeholders/backticks to PostgreSQL format.
 const toPgSql = (sql) => {
@@ -66,13 +95,34 @@ const toPgSql = (sql) => {
 
 const pool = {
     async query(sql, params = []) {
+        if (!databaseReady) {
+            if (/^\s*select/i.test(sql)) {
+                return { rows: [] };
+            }
+            return { rows: [], rowCount: 0 };
+        }
         return rawPool.query(toPgSql(sql), params);
     },
     async execute(sql, params = []) {
+        if (!databaseReady) {
+            return [[]];
+        }
         const result = await rawPool.query(toPgSql(sql), params);
         return [result.rows];
     },
     async getConnection() {
+        if (!databaseReady) {
+            return {
+                async execute() {
+                    return [[]];
+                },
+                async beginTransaction() { },
+                async commit() { },
+                async rollback() { },
+                release() { }
+            };
+        }
+
         const client = await rawPool.connect();
         return {
             async execute(sql, params = []) {
@@ -207,12 +257,22 @@ const initializeDatabase = async () => {
 
 (async () => {
     try {
-        await pool.query('SELECT 1');
-        console.log('✅ Connected to PostgreSQL (Aiven) successfully!');
-        await initializeDatabase();
+        const connected = await waitForDatabase();
+        if (connected) {
+            console.log('✅ Connected to PostgreSQL successfully!');
+            await initializeDatabase();
+            return;
+        }
+
+        if (allowDegradedDatabaseMode) {
+            console.warn('⚠️ PostgreSQL unavailable; continuing in degraded mode. API endpoints will return empty data until the database is reachable.');
+            return;
+        }
+
+        throw databaseError || new Error('Database connection failed');
     } catch (err) {
         console.error('❌ Database connection error:', err.message);
-        console.log('⚠️  Check your .env DB credentials and Aiven firewall rules.');
+        console.log('⚠️  Check your .env DB credentials and database availability.');
     }
 })();
 
@@ -695,7 +755,7 @@ app.listen(port, () => {
     console.log('');
     console.log('🚀 Server running on port ' + port);
     console.log('📊 API available at http://localhost:' + port + '/api');
-    console.log('📦 Connecting to PostgreSQL (Aiven)...');
+    console.log('📦 Connecting to PostgreSQL...');
     console.log('');
 });
 
