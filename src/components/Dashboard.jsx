@@ -2520,15 +2520,15 @@ const Dashboard = ({ onLogout, currentUser }) => {
                 ].concat(Array(95).fill({ wch: 18 }));
 
                 // Define styles
-                const titleStyle = { 
-                    fill: { fgColor: { rgb: 'FF203864' } }, 
-                    font: { bold: true, color: { rgb: 'FFFFFFFF' }, size: 14 }, 
+                const titleStyle = {
+                    fill: { fgColor: { rgb: 'FF203864' } },
+                    font: { bold: true, color: { rgb: 'FFFFFFFF' }, size: 14 },
                     alignment: { horizontal: 'left', vertical: 'center' },
                     border: { bottom: { style: 'medium' } }
                 };
-                const headerStyle = { 
-                    fill: { fgColor: { rgb: 'FF4472C4' } }, 
-                    font: { bold: true, color: { rgb: 'FFFFFFFF' } }, 
+                const headerStyle = {
+                    fill: { fgColor: { rgb: 'FF4472C4' } },
+                    font: { bold: true, color: { rgb: 'FFFFFFFF' } },
                     alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
                     border: { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } }
                 };
@@ -2538,7 +2538,7 @@ const Dashboard = ({ onLogout, currentUser }) => {
                     alignment: { horizontal: 'left', vertical: 'center' },
                     border: { bottom: { style: 'thin' } }
                 };
-                const dataStyle = { 
+                const dataStyle = {
                     alignment: { horizontal: 'left', vertical: 'top', wrapText: true },
                     border: { top: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' }, bottom: { style: 'thin' } }
                 };
@@ -2547,14 +2547,14 @@ const Dashboard = ({ onLogout, currentUser }) => {
                 let rowNum = 1;
                 // Title row
                 if (ws[`A${rowNum}`]) ws[`A${rowNum}`].s = titleStyle;
-                
+
                 // Apply header styles to all header rows
                 for (const cellRef in ws) {
                     if (cellRef.match(/^[A-Z]+\d+$/)) {
                         const row = parseInt(cellRef.match(/\d+$/)[0]);
                         const col = cellRef.match(/^[A-Z]+/)[0];
                         const cellValue = ws[cellRef]?.v;
-                        
+
                         // Apply title style to main title
                         if (row === 1) {
                             ws[cellRef].s = titleStyle;
@@ -2568,16 +2568,16 @@ const Dashboard = ({ onLogout, currentUser }) => {
                             ws[cellRef].s = sectionHeaderStyle;
                         }
                         // Apply header style to table headers (PROVINCE, INCIDENTS, REMARKS, etc.)
-                        else if (cellValue && (String(cellValue).includes('PROVINCE') || String(cellValue).includes('OFFICE') || 
-                                              String(cellValue).includes('INCIDENTS') || String(cellValue).includes('REMARKS') ||
-                                              String(cellValue).includes('TROPICAL CYCLONE') || String(cellValue).includes('GENERAL WEATHER') ||
-                                              String(cellValue).includes('CASUALTIES') || String(cellValue).includes('POWER') ||
-                                              String(cellValue).includes('COMMUNICATION') || String(cellValue).includes('DAMAGE') ||
-                                              String(cellValue).includes('SUSPENSION') || String(cellValue).includes('ASSISTANCE') ||
-                                              String(cellValue).includes('DESCRIPTION') || String(cellValue).includes('COST') ||
-                                              String(cellValue).includes('STATUS') || String(cellValue).includes('DATE') ||
-                                              String(cellValue).includes('EQUIPMENT') || String(cellValue).includes('STAFF') ||
-                                              String(cellValue).includes('AREA') || String(cellValue).includes('NAME'))) {
+                        else if (cellValue && (String(cellValue).includes('PROVINCE') || String(cellValue).includes('OFFICE') ||
+                            String(cellValue).includes('INCIDENTS') || String(cellValue).includes('REMARKS') ||
+                            String(cellValue).includes('TROPICAL CYCLONE') || String(cellValue).includes('GENERAL WEATHER') ||
+                            String(cellValue).includes('CASUALTIES') || String(cellValue).includes('POWER') ||
+                            String(cellValue).includes('COMMUNICATION') || String(cellValue).includes('DAMAGE') ||
+                            String(cellValue).includes('SUSPENSION') || String(cellValue).includes('ASSISTANCE') ||
+                            String(cellValue).includes('DESCRIPTION') || String(cellValue).includes('COST') ||
+                            String(cellValue).includes('STATUS') || String(cellValue).includes('DATE') ||
+                            String(cellValue).includes('EQUIPMENT') || String(cellValue).includes('STAFF') ||
+                            String(cellValue).includes('AREA') || String(cellValue).includes('NAME'))) {
                             ws[cellRef].s = headerStyle;
                         }
                         // Apply data style with wrapping
@@ -2586,7 +2586,7 @@ const Dashboard = ({ onLogout, currentUser }) => {
                         }
                     }
                 }
-                
+
                 // Set row heights for better visibility
                 ws['!rows'] = [];
                 ws['!rows'][0] = { hpt: 25 }; // Title row

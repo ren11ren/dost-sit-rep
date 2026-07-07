@@ -75,7 +75,6 @@ npm run ngrok
 ```
 
 If you want to use Docker Compose with Ngrok instead, make sure the frontend is exposed on the same port that Ngrok forwards.
-
 4. Useful commands
 
 - Run tests (CI mode):
