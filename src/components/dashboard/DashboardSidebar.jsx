@@ -103,7 +103,7 @@ const DashboardSidebar = ({
     return (
         <div className="sidebar-new">
             <div className="sidebar-logo">
-                <h2>DOST Region 1</h2>
+                <h2>DOST Ilocos Region</h2>
                 <p>Disaster Management</p>
             </div>
             <nav className="sidebar-nav">

@@ -580,7 +580,7 @@ const TopInfoBar = ({ activeEvent, displayWeather }) => (
 // Info Bar component
 const InfoBar = ({ displayWeather, activeEvent, typhoonHistory }) => (
     <div className="info-bar">
-        <div className="info-item"><span className="info-value">Region 1</span></div>
+        <div className="info-item"><span className="info-value">Ilocos Region</span></div>
         <div className="info-item"><span className="info-label">Current Weather:</span><span className="info-value">{displayWeather}</span></div>
         <div className="info-item"><span className="info-label">Active Event:</span><span className="info-value">{activeEvent ? activeEvent.name : 'None'}</span></div>
         <div className="info-item"><span className="info-label">Total Events:</span><span className="info-value">{typhoonHistory.length}</span></div>
@@ -630,7 +630,7 @@ const PSTOSelector = ({ isUser, currentUser, officesData, selectedOffice, region
                         onClick={() => handleOfficeClick('PSTO-Region-1')}
                     >
                         <div className="psto-selector-overlay">
-                            <div className="psto-selector-name">PSTO Region 1</div>
+                            <div className="psto-selector-name">PSTO Ilocos Region</div>
                             <div className="psto-selector-stats">
                                 <span>📊 {regionSummary.incidents}</span>
                                 <span>⚠️ {regionSummary.casualties}</span>

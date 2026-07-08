@@ -6,7 +6,7 @@ const DOST_LOGO = 'data:image/svg+xml,' + encodeURIComponent(`
   <rect width="200" height="200" rx="20" fill="#0a2a4a"/>
   <rect x="15" y="15" width="170" height="170" rx="12" fill="none" stroke="#ffd700" stroke-width="2"/>
   <text x="100" y="65" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="20" font-weight="bold">DOST</text>
-  <text x="100" y="88" text-anchor="middle" fill="#ffd700" font-family="Arial, sans-serif" font-size="13">REGION 1</text>
+  <text x="100" y="88" text-anchor="middle" fill="#ffd700" font-family="Arial, sans-serif" font-size="13">ILOCOS REGION</text>
   <text x="100" y="115" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="10">DISASTER</text>
   <text x="100" y="132" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="10">MANAGEMENT</text>
   <circle cx="100" cy="165" r="12" fill="none" stroke="#ffd700" stroke-width="1.5"/>
@@ -157,9 +157,9 @@ const Login = ({ onLogin }) => {
       <div className="login-brand-panel">
         <div className={`login-brand-content ${showHeroImage ? 'has-hero' : ''}`}>
           {showHeroImage && heroPath ? (
-            <img src={heroPath} alt="DOST Region 1" className="login-hero-photo" />
+            <img src={heroPath} alt="DOST Ilocos Region" className="login-hero-photo" />
           ) : (
-            <img src={DOST_LOGO} alt="DOST Region 1" className="login-brand-logo" />
+            <img src={DOST_LOGO} alt="DOST Ilocos Region" className="login-brand-logo" />
           )}
           <h1>DOST ILOCOS REGION</h1>
           <p className="login-brand-tagline">Disaster Management Dashboard</p>

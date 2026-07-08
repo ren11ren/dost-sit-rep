@@ -6,7 +6,7 @@ services:
   # ==========================================
   postgres:
     image: postgres:16-alpine
-    container_name: dost-postgres
+    container_name: dost-ilocos-postgres
     environment:
       POSTGRES_USER: dostuser
       POSTGRES_PASSWORD: dostpass
@@ -86,7 +86,7 @@ services:
   # ==========================================
   ngrok:
     image: ngrok/ngrok:latest
-    container_name: dost-ngrok
+    container_name: dost-ilocos-ngrok
     restart: unless-stopped
     environment:
       NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN:-}

@@ -73,13 +73,13 @@ const EMPTY_STAFF = { name: '', area: '', assistance: '', status: 'Active' };
 // IMAGE PLACEHOLDERS
 // ============================================================
 
-// DOST Region 1 Master Logo
+// DOST Ilocos Region Master Logo
 const DOST_MASTER_LOGO = 'data:image/svg+xml,' + encodeURIComponent(`
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
   <rect width="200" height="200" rx="20" fill="#0a2a4a"/>
   <rect x="15" y="15" width="170" height="170" rx="12" fill="none" stroke="#ffd700" stroke-width="2"/>
   <text x="100" y="65" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="20" font-weight="bold">DOST</text>
-  <text x="100" y="88" text-anchor="middle" fill="#ffd700" font-family="Arial, sans-serif" font-size="13">REGION 1</text>
+  <text x="100" y="88" text-anchor="middle" fill="#ffd700" font-family="Arial, sans-serif" font-size="13">ILOCOS REGION</text>
   <text x="100" y="115" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="10">DISASTER</text>
   <text x="100" y="132" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="10">MANAGEMENT</text>
   <circle cx="100" cy="165" r="12" fill="none" stroke="#ffd700" stroke-width="1.5"/>
@@ -98,7 +98,7 @@ const PSTO_ILOCOS_NORTE_IMG = 'data:image/svg+xml,' + encodeURIComponent(`
   </defs>
   <rect width="300" height="200" rx="15" fill="url(#grad1)"/>
   <rect x="10" y="10" width="280" height="180" rx="10" fill="none" stroke="#ffd700" stroke-width="2"/>
-  <text x="150" y="45" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="13" font-weight="bold">DOST REGION 1</text>
+  <text x="150" y="45" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="13" font-weight="bold">DOST ILOCOS REGION</text>
   <text x="150" y="65" text-anchor="middle" fill="#ffd700" font-family="Arial, sans-serif" font-size="10">PSTO OFFICE</text>
   <circle cx="150" cy="105" r="30" fill="none" stroke="#ffd700" stroke-width="2"/>
   <text x="150" y="112" text-anchor="middle" fill="#ffd700" font-family="Arial, sans-serif" font-size="28">☀️</text>
@@ -118,7 +118,7 @@ const PSTO_ILOCOS_SUR_IMG = 'data:image/svg+xml,' + encodeURIComponent(`
   </defs>
   <rect width="300" height="200" rx="15" fill="url(#grad2)"/>
   <rect x="10" y="10" width="280" height="180" rx="10" fill="none" stroke="#ffd700" stroke-width="2"/>
-  <text x="150" y="45" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="13" font-weight="bold">DOST REGION 1</text>
+  <text x="150" y="45" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="13" font-weight="bold">DOST ILOCOS REGION</text>
   <text x="150" y="65" text-anchor="middle" fill="#ffd700" font-family="Arial, sans-serif" font-size="10">PSTO OFFICE</text>
   <circle cx="150" cy="105" r="30" fill="none" stroke="#ffd700" stroke-width="2"/>
   <text x="150" y="112" text-anchor="middle" fill="#ffd700" font-family="Arial, sans-serif" font-size="28">🌾</text>
@@ -138,7 +138,7 @@ const PSTO_LA_UNION_IMG = 'data:image/svg+xml,' + encodeURIComponent(`
   </defs>
   <rect width="300" height="200" rx="15" fill="url(#grad3)"/>
   <rect x="10" y="10" width="280" height="180" rx="10" fill="none" stroke="#ffd700" stroke-width="2"/>
-  <text x="150" y="45" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="13" font-weight="bold">DOST REGION 1</text>
+  <text x="150" y="45" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="13" font-weight="bold">DOST ILOCOS REGION</text>
   <text x="150" y="65" text-anchor="middle" fill="#ffd700" font-family="Arial, sans-serif" font-size="10">PSTO OFFICE</text>
   <circle cx="150" cy="105" r="30" fill="none" stroke="#ffd700" stroke-width="2"/>
   <text x="150" y="112" text-anchor="middle" fill="#ffd700" font-family="Arial, sans-serif" font-size="28">🏖️</text>
@@ -158,7 +158,7 @@ const PSTO_PANGASINAN_IMG = 'data:image/svg+xml,' + encodeURIComponent(`
   </defs>
   <rect width="300" height="200" rx="15" fill="url(#grad4)"/>
   <rect x="10" y="10" width="280" height="180" rx="10" fill="none" stroke="#ffd700" stroke-width="2"/>
-  <text x="150" y="45" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="13" font-weight="bold">DOST REGION 1</text>
+  <text x="150" y="45" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="13" font-weight="bold">DOST ILOCOS REGION</text>
   <text x="150" y="65" text-anchor="middle" fill="#ffd700" font-family="Arial, sans-serif" font-size="10">PSTO OFFICE</text>
   <circle cx="150" cy="105" r="30" fill="none" stroke="#ffd700" stroke-width="2"/>
   <text x="150" y="112" text-anchor="middle" fill="#ffd700" font-family="Arial, sans-serif" font-size="28">🌊</text>
@@ -178,7 +178,7 @@ const PSTO_ILOCOS_REGION_IMG = 'data:image/svg+xml,' + encodeURIComponent(`
   </defs>
   <rect width="300" height="200" rx="15" fill="url(#grad5)"/>
   <rect x="10" y="10" width="280" height="180" rx="10" fill="none" stroke="#ffd700" stroke-width="2"/>
-  <text x="150" y="50" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="14" font-weight="bold">DOST REGION 1</text>
+  <text x="150" y="50" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="14" font-weight="bold">DOST ILOCOS REGION</text>
   <text x="150" y="75" text-anchor="middle" fill="#ffd700" font-family="Arial, sans-serif" font-size="20" font-weight="bold">📍 ILOCOS REGION</text>
   <line x1="60" y1="85" x2="240" y2="85" stroke="#ffd700" stroke-width="1" opacity="0.5"/>
   <text x="150" y="115" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="11">Regional Coordination Center</text>
@@ -188,7 +188,7 @@ const PSTO_ILOCOS_REGION_IMG = 'data:image/svg+xml,' + encodeURIComponent(`
 </svg>
 `);
 
-// Region 1 Summary Image
+// Ilocos Region Summary Image
 const REGION_1_IMG = 'data:image/svg+xml,' + encodeURIComponent(`
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 200">
   <defs>
@@ -199,14 +199,14 @@ const REGION_1_IMG = 'data:image/svg+xml,' + encodeURIComponent(`
   </defs>
   <rect width="300" height="200" rx="15" fill="url(#grad6)"/>
   <rect x="10" y="10" width="280" height="180" rx="10" fill="none" stroke="#ffd700" stroke-width="2"/>
-  <text x="150" y="45" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="16" font-weight="bold">🏛️ DOST REGION 1</text>
+  <text x="150" y="45" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="16" font-weight="bold">🏛️ DOST ILOCOS REGION</text>
   <text x="150" y="65" text-anchor="middle" fill="#ffd700" font-family="Arial, sans-serif" font-size="11">Ilocos Region</text>
   <line x1="80" y1="75" x2="220" y2="75" stroke="#ffd700" stroke-width="1" opacity="0.5"/>
   <text x="150" y="100" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="12">📍 5 Provincial Offices</text>
   <text x="150" y="120" text-anchor="middle" fill="#b0c4de" font-family="Arial, sans-serif" font-size="11">🔬 Science & Technology</text>
   <text x="150" y="140" text-anchor="middle" fill="#b0c4de" font-family="Arial, sans-serif" font-size="11">🌪️ Disaster Risk Reduction</text>
   <text x="150" y="160" text-anchor="middle" fill="#b0c4de" font-family="Arial, sans-serif" font-size="11">📊 Situational Reporting</text>
-  <text x="150" y="182" text-anchor="middle" fill="#ffd700" font-family="Arial, sans-serif" font-size="9">Region 1 Disaster Management Dashboard</text>
+  <text x="150" y="182" text-anchor="middle" fill="#ffd700" font-family="Arial, sans-serif" font-size="9">Ilocos Region Disaster Management Dashboard</text>
 </svg>
 `);
 
@@ -1206,7 +1206,7 @@ const Dashboard = ({ onLogout, currentUser }) => {
         const handleEditToggle = useCallback(() => {
             try {
                 if (selectedOffice === 'PSTO-Region-1') {
-                    showToast('Cannot edit Region 1 summary. Select a specific PSTO office.', 'warning');
+                    showToast('Cannot edit Ilocos Region summary. Select a specific PSTO office.', 'warning');
                     return;
                 }
                 if (!editMode) {
@@ -1229,7 +1229,7 @@ const Dashboard = ({ onLogout, currentUser }) => {
         const handleSave = useCallback(() => {
             try {
                 if (selectedOffice === 'PSTO-Region-1') {
-                    showToast('Cannot save Region 1 data directly. Select a specific PSTO office.', 'warning');
+                    showToast('Cannot save Ilocos Region data directly. Select a specific PSTO office.', 'warning');
                     return;
                 }
 
