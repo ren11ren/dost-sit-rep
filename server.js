@@ -1,17 +1,237 @@
 const express = require('express');
-const { Pool } = require('pg');
 const cors = require('cors');
 const dotenv = require('dotenv');
 
 dotenv.config();
+
+const pool = require('./lib/db');
 
 const app = express();
 const port = parseInt(process.env.PORT, 10) || 5010;
 const allowDegradedDatabaseMode = process.env.ALLOW_DEGRADED_DB_MODE !== 'false';
 let databaseReady = false;
 let databaseError = null;
+let useFallbackData = false;
 
 const allowedOriginRegex = /^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)(:\d+)?$/;
+
+const createFallbackStore = () => {
+    const now = new Date().toISOString();
+    return {
+        offices: [],
+        events: [],
+        users: [{
+            id: 1,
+            name: 'Admin User',
+            email: 'admin@dostregion1.ph',
+            office: 'PSTO-La Union',
+            role: 'SADMIN',
+            status: 'Active',
+            password_hash: 'admin123',
+            profile_image: null,
+            created_at: now,
+            updated_at: now
+        }],
+        pendingReports: [],
+        notifications: [],
+        settings: [{ setting_key: 'active_menu', setting_value: JSON.stringify('dashboard') }],
+        typhoonHistory: []
+    };
+};
+
+const fallbackStore = createFallbackStore();
+
+const parseFallbackValue = (value) => {
+    if (typeof value !== 'string') return value;
+    try {
+        return JSON.parse(value);
+    } catch {
+        return value;
+    }
+};
+
+const serializeFallbackValue = (value) => {
+    if (typeof value === 'string') return value;
+    return JSON.stringify(value);
+};
+
+const normalizeSql = (sql) => (sql || '').replace(/\s+/g, ' ').trim();
+
+const getFallbackTableRows = (tableName) => {
+    switch (tableName) {
+        case 'offices': return fallbackStore.offices;
+        case 'events': return fallbackStore.events;
+        case 'users': return fallbackStore.users;
+        case 'pending_reports': return fallbackStore.pendingReports;
+        case 'notifications': return fallbackStore.notifications;
+        case 'settings': return fallbackStore.settings;
+        case 'typhoon_history': return fallbackStore.typhoonHistory;
+        default: return [];
+    }
+};
+
+const setFallbackTableRows = (tableName, rows) => {
+    switch (tableName) {
+        case 'offices': fallbackStore.offices = rows; break;
+        case 'events': fallbackStore.events = rows; break;
+        case 'users': fallbackStore.users = rows; break;
+        case 'pending_reports': fallbackStore.pendingReports = rows; break;
+        case 'notifications': fallbackStore.notifications = rows; break;
+        case 'settings': fallbackStore.settings = rows; break;
+        case 'typhoon_history': fallbackStore.typhoonHistory = rows; break;
+        default: break;
+    }
+};
+
+const fallbackQuery = async (sql, params = []) => {
+    const normalizedSql = normalizeSql(sql);
+
+    if (/^CREATE TABLE/i.test(normalizedSql)) {
+        return { rows: [] };
+    }
+
+    if (/^SELECT\s+COUNT\(\*\)\s+AS\s+cnt/i.test(normalizedSql)) {
+        const tableMatch = normalizedSql.match(/FROM\s+([a-z_]+)/i);
+        const tableName = tableMatch?.[1];
+        const rows = getFallbackTableRows(tableName || '');
+        return { rows: [{ cnt: rows.length }] };
+    }
+
+    if (/^SELECT/i.test(normalizedSql)) {
+        const tableMatch = normalizedSql.match(/FROM\s+([a-z_]+)/i);
+        const tableName = tableMatch?.[1];
+        return { rows: getFallbackTableRows(tableName || '') };
+    }
+
+    if (/^INSERT\s+INTO/i.test(normalizedSql)) {
+        const tableMatch = normalizedSql.match(/INTO\s+([a-z_]+)/i);
+        const tableName = tableMatch?.[1];
+        const columnMatch = normalizedSql.match(/\(([^)]+)\)\s+VALUES/i);
+        const columns = columnMatch?.[1]
+            ?.split(',')
+            .map((column) => column.trim().replace(/^"|"$/g, '')) || [];
+
+        const values = Array.isArray(params) ? params : [];
+        const row = {};
+
+        columns.forEach((column, index) => {
+            row[column] = parseFallbackValue(values[index]);
+        });
+
+        if (tableName === 'offices') {
+            const existingIndex = fallbackStore.offices.findIndex((item) => item.office_name === row.office_name);
+            const nextId = fallbackStore.offices.length + 1;
+            row.id = row.id || nextId;
+            if (existingIndex >= 0) {
+                fallbackStore.offices[existingIndex] = row;
+            } else {
+                fallbackStore.offices.push(row);
+            }
+            return { rows: [row] };
+        }
+
+        if (tableName === 'events') {
+            const nextId = fallbackStore.events.length + 1;
+            row.id = row.id || nextId;
+            fallbackStore.events.push(row);
+            return { rows: [row] };
+        }
+
+        if (tableName === 'users') {
+            const nextId = fallbackStore.users.length + 1;
+            row.id = row.id || nextId;
+            fallbackStore.users.push(row);
+            return { rows: [row] };
+        }
+
+        if (tableName === 'pending_reports') {
+            const nextId = fallbackStore.pendingReports.length + 1;
+            row.id = row.id || nextId;
+            fallbackStore.pendingReports.push(row);
+            return { rows: [row] };
+        }
+
+        if (tableName === 'notifications') {
+            const nextId = fallbackStore.notifications.length + 1;
+            row.id = row.id || nextId;
+            fallbackStore.notifications.push(row);
+            return { rows: [row] };
+        }
+
+        if (tableName === 'settings') {
+            const existingIndex = fallbackStore.settings.findIndex((item) => item.setting_key === row.setting_key);
+            if (existingIndex >= 0) {
+                fallbackStore.settings[existingIndex] = row;
+            } else {
+                fallbackStore.settings.push(row);
+            }
+            return { rows: [row] };
+        }
+
+        if (tableName === 'typhoon_history') {
+            const nextId = fallbackStore.typhoonHistory.length + 1;
+            row.id = row.id || nextId;
+            fallbackStore.typhoonHistory.push(row);
+            return { rows: [row] };
+        }
+
+        return { rows: [] };
+    }
+
+    if (/^UPDATE/i.test(normalizedSql)) {
+        const tableMatch = normalizedSql.match(/UPDATE\s+([a-z_]+)/i);
+        const tableName = tableMatch?.[1];
+
+        if (tableName === 'notifications') {
+            const id = params[0];
+            const target = fallbackStore.notifications.find((item) => item.id === Number(id));
+            if (target) {
+                target.read = true;
+            }
+        }
+
+        if (tableName === 'users') {
+            const id = params[params.length - 1];
+            const target = fallbackStore.users.find((item) => item.id === Number(id));
+            if (target) {
+                target.name = params[0];
+                target.email = params[1];
+                target.office = params[2];
+                target.role = params[3];
+                target.status = params[4];
+                target.profile_image = params[5] || null;
+            }
+        }
+
+        return { rows: [] };
+    }
+
+    if (/^DELETE/i.test(normalizedSql)) {
+        const tableMatch = normalizedSql.match(/FROM\s+([a-z_]+)/i);
+        const tableName = tableMatch?.[1];
+        if (tableName === 'offices') {
+            setFallbackTableRows('offices', []);
+        }
+        if (tableName === 'events') {
+            setFallbackTableRows('events', []);
+        }
+        if (tableName === 'users') {
+            setFallbackTableRows('users', []);
+        }
+        if (tableName === 'pending_reports') {
+            setFallbackTableRows('pending_reports', []);
+        }
+        if (tableName === 'notifications') {
+            setFallbackTableRows('notifications', []);
+        }
+        if (tableName === 'typhoon_history') {
+            setFallbackTableRows('typhoon_history', []);
+        }
+        return { rows: [] };
+    }
+
+    return { rows: [] };
+};
 
 app.use(cors({
     origin: (origin, callback) => {
@@ -25,56 +245,21 @@ app.use(cors({
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-const getPgConfig = () => {
-    const isLocalHost = (host) => ['localhost', '127.0.0.1', '::1'].includes(host || '');
-
-    if (process.env.DATABASE_URL) {
-        let connStr = process.env.DATABASE_URL;
-        let host = null;
-        try {
-            const u = new URL(connStr);
-            host = u.hostname;
-            u.searchParams.delete('sslmode');
-            connStr = u.toString();
-        } catch (_) { }
-
-        return {
-            connectionString: connStr,
-            ...(isLocalHost(host) ? {} : { ssl: { rejectUnauthorized: false } }),
-            max: parseInt(process.env.DB_POOL_MAX || '20', 10)
-        };
-    }
-
-    const host = process.env.DB_HOST || 'localhost';
-    return {
-        host,
-        port: parseInt(process.env.DB_PORT || '5432', 10),
-        user: process.env.DB_USER || 'postgres',
-        password: process.env.DB_PASSWORD || '',
-        database: process.env.DB_NAME || 'defaultdb',
-        ...(isLocalHost(host) ? {} : { ssl: { rejectUnauthorized: false } }),
-        max: parseInt(process.env.DB_POOL_MAX || '20', 10)
-    };
-};
-
-const rawPool = new Pool(getPgConfig());
-rawPool.on('error', (err) => {
-    console.error('⚠️ Unexpected PostgreSQL pool error:', err.message);
-});
-
 const waitForDatabase = async () => {
     const maxAttempts = parseInt(process.env.DB_CONNECT_RETRIES || '5', 10);
     const delayMs = parseInt(process.env.DB_CONNECT_RETRY_DELAY_MS || '1000', 10);
 
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
         try {
-            await rawPool.query('SELECT 1');
+            await pool.query('SELECT 1');
             databaseReady = true;
             databaseError = null;
+            useFallbackData = false;
             return true;
         } catch (err) {
             databaseError = err;
             if (attempt === maxAttempts) {
+                useFallbackData = allowDegradedDatabaseMode;
                 return false;
             }
             console.log(`⏳ Waiting for PostgreSQL (${attempt}/${maxAttempts})... ${err.message}`);
@@ -86,6 +271,7 @@ const waitForDatabase = async () => {
 };
 
 // Converts legacy mysql-style placeholders/backticks to PostgreSQL format.
+// Converts legacy mysql-style placeholders/backticks to PostgreSQL format.
 const toPgSql = (sql) => {
     let idx = 0;
     return sql
@@ -93,24 +279,45 @@ const toPgSql = (sql) => {
         .replace(/\?/g, () => `$${++idx}`);
 };
 
-const pool = {
+// Wraps the pool to support fallback mode and execute() interface
+const dbAdapter = {
     async query(sql, params = []) {
+        if (!databaseReady && useFallbackData) {
+            return fallbackQuery(sql, params);
+        }
         if (!databaseReady) {
             if (/^\s*select/i.test(sql)) {
                 return { rows: [] };
             }
             return { rows: [], rowCount: 0 };
         }
-        return rawPool.query(toPgSql(sql), params);
+        return pool.query(toPgSql(sql), params);
     },
     async execute(sql, params = []) {
+        if (!databaseReady && useFallbackData) {
+            const result = await fallbackQuery(sql, params);
+            return [result.rows];
+        }
         if (!databaseReady) {
             return [[]];
         }
-        const result = await rawPool.query(toPgSql(sql), params);
+        const result = await pool.query(toPgSql(sql), params);
         return [result.rows];
     },
     async getConnection() {
+        if (!databaseReady && useFallbackData) {
+            return {
+                async execute(sql, params = []) {
+                    const result = await fallbackQuery(sql, params);
+                    return [result.rows];
+                },
+                async beginTransaction() { },
+                async commit() { },
+                async rollback() { },
+                release() { }
+            };
+        }
+
         if (!databaseReady) {
             return {
                 async execute() {
@@ -123,7 +330,7 @@ const pool = {
             };
         }
 
-        const client = await rawPool.connect();
+        const client = await pool.connect();
         return {
             async execute(sql, params = []) {
                 const result = await client.query(toPgSql(sql), params);
@@ -147,7 +354,7 @@ const pool = {
 
 // Helper: run a query and return rows
 const query = async (sql, params = []) => {
-    const result = await pool.query(sql, params);
+    const result = await dbAdapter.query(sql, params);
     return result.rows;
 };
 
@@ -255,26 +462,28 @@ const initializeDatabase = async () => {
     }
 };
 
-(async () => {
-    try {
-        const connected = await waitForDatabase();
-        if (connected) {
-            console.log('✅ Connected to PostgreSQL successfully!');
-            await initializeDatabase();
-            return;
-        }
+if (require.main === module) {
+    (async () => {
+        try {
+            const connected = await waitForDatabase();
+            if (connected) {
+                console.log('✅ Connected to PostgreSQL successfully!');
+                await initializeDatabase();
+                return;
+            }
 
-        if (allowDegradedDatabaseMode) {
-            console.warn('⚠️ PostgreSQL unavailable; continuing in degraded mode. API endpoints will return empty data until the database is reachable.');
-            return;
-        }
+            if (allowDegradedDatabaseMode) {
+                console.warn('⚠️ PostgreSQL unavailable; continuing in degraded mode with built-in fallback data.');
+                return;
+            }
 
-        throw databaseError || new Error('Database connection failed');
-    } catch (err) {
-        console.error('❌ Database connection error:', err.message);
-        console.log('⚠️  Check your .env DB credentials and database availability.');
-    }
-})();
+            throw databaseError || new Error('Database connection failed');
+        } catch (err) {
+            console.error('❌ Database connection error:', err.message);
+            console.log('⚠️  Check your .env DB credentials and database availability.');
+        }
+    })();
+}
 
 // ==================== API ROUTES ====================
 
@@ -556,7 +765,7 @@ app.post('/api/active-menu', async (req, res) => {
 
 app.post('/api/sync-all', async (req, res) => {
     const { officesData, events, users, pendingReports, notifications, activeMenu, allowEmptySync } = req.body || {};
-    const conn = await pool.getConnection();
+    const conn = await dbAdapter.getConnection();
     try {
         const incomingOfficeCount = officesData && typeof officesData === 'object' ? Object.keys(officesData).length : 0;
         const incomingEventCount = Array.isArray(events) ? events.length : 0;
@@ -751,12 +960,14 @@ app.post('/api/typhoon-history', async (req, res) => {
     }
 });
 
-app.listen(port, () => {
-    console.log('');
-    console.log('🚀 Server running on port ' + port);
-    console.log('📊 API available at http://localhost:' + port + '/api');
-    console.log('📦 Connecting to PostgreSQL...');
-    console.log('');
-});
+if (require.main === module) {
+    app.listen(port, () => {
+        console.log('');
+        console.log('🚀 Server running on port ' + port);
+        console.log('📊 API available at http://localhost:' + port + '/api');
+        console.log('📦 Connecting to PostgreSQL...');
+        console.log('');
+    });
+}
 
-module.exports = app;
+module.exports = { app, createFallbackStore };

@@ -330,7 +330,7 @@ export const SettingsModal = ({
                                     <button className="danger" onClick={resetToDefaultData}>Reset to Default</button>
                                 </div>
                             </div>
-                        )}
+                        )} 
 
                         {activeSection === 'advanced' && (
                             <div className="settings-group">

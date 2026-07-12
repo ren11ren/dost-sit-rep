@@ -4,7 +4,7 @@
   "private": true,
   "proxy": "http://localhost:5010",
   "scripts": {
-    "start": "HOST=0.0.0.0 DANGEROUSLY_DISABLE_HOST_CHECK=true PORT=5006 REACT_APP_API_PORT=5010 react-scripts start",
+    "start": "BROWSER=none DANGEROUSLY_DISABLE_HOST_CHECK=true PORT=5006 REACT_APP_API_PORT=5010 react-scripts start",
     "server": "node server.js",
     "dev": "concurrently \"PORT=5010 npm run server\" \"npm start\"",
     "ngrok": "ngrok http 5006 --host-header=localhost:5006",
