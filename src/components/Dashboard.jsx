@@ -58,11 +58,15 @@ const STORAGE_KEYS = {
 };
 
 const INITIAL_SETTINGS = {
-    systemName: 'DOST Ilocos Region  Disaster Management',
+    systemName: 'DOST Ilocos Region Disaster Management',
     notificationSound: true,
     autoArchiveDays: 7,
     darkMode: false,
-    defaultAlertLevel: 'WHITE'
+    defaultAlertLevel: 'WHITE',
+    developerName: 'Rainier Ganaden',
+    developerEmail: 'rainierganaden1106@gmail.com',
+    developerWebsite: 'https://dostregion1.ph',
+    developerNotes: 'Developed and maintained by the DOST Region 1 IT team.'
 };
 
 const EMPTY_DAMAGE = { description: '', cost: '', status: 'Reported', image: null };

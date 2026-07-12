@@ -204,6 +204,13 @@ export const SettingsModal = ({
 
     const [activeSection, setActiveSection] = useState('general');
 
+    const developerDefaults = {
+        name: 'Rainier Ganaden',
+        email: 'rainierganaden1106@gmail.com',
+        website: 'https://dostregion1.ph',
+        notes: 'Developed and maintained by the DOST Region 1 IT team.'
+    };
+
     const sectionMeta = {
         general: {
             title: 'General Settings',
@@ -221,9 +228,13 @@ export const SettingsModal = ({
             title: 'Maintenance',
             description: 'Back up, restore, and reset system data.'
         },
+        developer: {
+            title: 'Developer Profile',
+            description: 'Reference system developer profile information. This section is view-only.'
+        },
         advanced: {
-            title: 'Advanced',
-            description: 'Reserved for future advanced configuration modules.'
+            title: 'User Manual',
+            description: 'Read the user guide and helpful documentation for this dashboard.'
         }
     };
 
@@ -244,7 +255,8 @@ export const SettingsModal = ({
                             { key: 'appearance', label: 'Appearance' },
                             { key: 'notifications', label: 'Notifications' },
                             { key: 'maintenance', label: 'Maintenance' },
-                            { key: 'advanced', label: 'Advanced' }
+                            { key: 'developer', label: 'Developer' },
+                            { key: 'advanced', label: 'User Manual' }
                         ].map((item) => (
                             <button
                                 key={item.key}
@@ -330,12 +342,57 @@ export const SettingsModal = ({
                                     <button className="danger" onClick={resetToDefaultData}>Reset to Default</button>
                                 </div>
                             </div>
-                        )} 
+                        )}
+
+                        {activeSection === 'developer' && (
+                            <div className="settings-group developer-settings-group">
+                                <div className="developer-card">
+                                    <div className="developer-card-icon">👤</div>
+                                    <div className="developer-card-content">
+                                        <h5>Developer Profile</h5>
+                                        <p>This profile is display-only and is maintained centrally by the system administrator.</p>
+                                    </div>
+                                </div>
+                                <div className="developer-profile-grid">
+                                    <div className="developer-profile-row">
+                                        <span>Name</span>
+                                        <strong>{settingsData.developerName || developerDefaults.name}</strong>
+                                    </div>
+                                    <div className="developer-profile-row">
+                                        <span>Email</span>
+                                        <a href={`mailto:${settingsData.developerEmail || developerDefaults.email}`}>
+                                            {settingsData.developerEmail || developerDefaults.email}
+                                        </a>
+                                    </div>
+                                    <div className="developer-profile-row">
+                                        <span>Website</span>
+                                        <a href={settingsData.developerWebsite || developerDefaults.website} target="_blank" rel="noreferrer">
+                                            {settingsData.developerWebsite || developerDefaults.website}
+                                        </a>
+                                    </div>
+                                </div>
+                                <div className="developer-notes-block">
+                                    <div className="developer-notes-label">Developer Notes</div>
+                                    <div className="developer-notes-text">
+                                        {settingsData.developerNotes || developerDefaults.notes}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
 
                         {activeSection === 'advanced' && (
-                            <div className="settings-group">
-                                <div className="settings-placeholder">
-                                    Additional advanced options can be added here.
+                            <div className="settings-group user-manual-group">
+                                <div className="user-manual-content">
+                                    <h5>Dashboard User Manual</h5>
+                                    <p>This guide helps you navigate the dashboard and use the main features.</p>
+                                    <ul>
+                                        <li><strong>General:</strong> Update the system name, default alert level, and archive settings.</li>
+                                        <li><strong>Appearance:</strong> Toggle dark mode for a darker interface theme.</li>
+                                        <li><strong>Notifications:</strong> Enable or disable notification sound alerts.</li>
+                                        <li><strong>Maintenance:</strong> Export or import data and reset the dashboard to default settings.</li>
+                                        <li><strong>Developer:</strong> View the developer profile and support contact details.</li>
+                                    </ul>
+                                    <p>If you need help, open the corresponding tab and follow the labels for the action you want to perform.</p>
                                 </div>
                             </div>
                         )}

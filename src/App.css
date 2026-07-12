@@ -2901,7 +2901,8 @@ textarea {
   border: 1.5px solid var(--border);
   border-radius: 6px;
   flex: 1;
-  max-width: 280px;
+  min-width: 0;
+  max-width: 100%;
   background: var(--card-bg);
   color: var(--text);
   transition: var(--transition);
@@ -2913,6 +2914,132 @@ textarea {
 .settings-item-row select:focus {
   border-color: var(--secondary);
   outline: none;
+}
+
+.settings-static-value,
+.settings-static-textarea {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.settings-static-textarea {
+  min-height: 96px;
+}
+
+.settings-note {
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #eef6ff;
+  color: #1f4db5;
+  font-size: 13px;
+  border: 1px solid rgba(15, 94, 247, 0.12);
+}
+
+.developer-settings-group {
+  display: grid;
+  gap: 18px;
+}
+
+.developer-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 18px;
+  border-radius: 14px;
+  background: rgba(15, 94, 247, 0.08);
+  border: 1px solid rgba(15, 94, 247, 0.14);
+}
+
+.developer-card-icon {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #0f5ef7;
+  color: white;
+  font-size: 18px;
+}
+
+.developer-card-content h5 {
+  margin: 0 0 6px;
+  font-size: 16px;
+  color: #12263f;
+}
+
+.developer-card-content p {
+  margin: 0;
+  color: #44566c;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.developer-profile-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.developer-profile-row {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+}
+
+.developer-profile-row span {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.developer-profile-row strong,
+.developer-profile-row a {
+  font-size: 14px;
+  color: var(--text);
+  word-break: break-word;
+}
+
+.developer-profile-row a {
+  text-decoration: none;
+  color: var(--secondary);
+}
+
+.developer-profile-row a:hover {
+  text-decoration: underline;
+}
+
+.developer-notes-block {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  border-radius: 14px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+}
+
+.developer-notes-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.developer-notes-text {
+  white-space: pre-wrap;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.7;
 }
 
 .settings-item-row input[type="checkbox"] {
