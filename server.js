@@ -1,6 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const fs = require('fs');
+const path = require('path');
 
 dotenv.config();
 
@@ -15,9 +17,92 @@ let useFallbackData = false;
 
 const allowedOriginRegex = /^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)(:\d+)?$/;
 
-const createFallbackStore = () => {
+const fallbackStoreFile = process.env.FALLBACK_STORE_PATH || path.join(__dirname, 'data', 'fallback-store.json');
+
+const ensureFallbackStoreFile = (filePath = fallbackStoreFile) => {
+    try {
+        fs.mkdirSync(path.dirname(filePath), { recursive: true });
+    } catch (error) {
+        console.warn('Unable to create fallback store directory:', error.message);
+    }
+};
+
+const readFallbackStore = (filePath = fallbackStoreFile) => {
+    try {
+        if (!fs.existsSync(filePath)) return null;
+        const raw = fs.readFileSync(filePath, 'utf8');
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        return parsed && typeof parsed === 'object' ? parsed : null;
+    } catch (error) {
+        console.warn('Unable to read fallback store:', error.message);
+        return null;
+    }
+};
+
+const persistFallbackStore = (store, filePath = fallbackStoreFile) => {
+    try {
+        ensureFallbackStoreFile(filePath);
+        fs.writeFileSync(filePath, JSON.stringify(store, null, 2));
+    } catch (error) {
+        console.warn('Unable to persist fallback store:', error.message);
+    }
+};
+
+const createPersistedProxy = (value, filePath, onChange) => {
+    if (Array.isArray(value)) {
+        return new Proxy(value, {
+            get(target, prop, receiver) {
+                const item = target[prop];
+                if (['push', 'pop', 'splice', 'sort', 'reverse', 'shift', 'unshift'].includes(prop)) {
+                    return (...args) => {
+                        const result = target[prop](...args);
+                        onChange();
+                        return result;
+                    };
+                }
+                if (item && typeof item === 'object') {
+                    return createPersistedProxy(item, filePath, onChange);
+                }
+                return Reflect.get(target, prop, receiver);
+            },
+            set(target, prop, newValue) {
+                target[prop] = newValue && typeof newValue === 'object'
+                    ? createPersistedProxy(newValue, filePath, onChange)
+                    : newValue;
+                onChange();
+                return true;
+            }
+        });
+    }
+
+    if (value && typeof value === 'object') {
+        return new Proxy(value, {
+            get(target, prop, receiver) {
+                const item = target[prop];
+                if (item && typeof item === 'object') {
+                    return createPersistedProxy(item, filePath, onChange);
+                }
+                return Reflect.get(target, prop, receiver);
+            },
+            set(target, prop, newValue) {
+                target[prop] = newValue && typeof newValue === 'object'
+                    ? createPersistedProxy(newValue, filePath, onChange)
+                    : newValue;
+                onChange();
+                return true;
+            }
+        });
+    }
+
+    return value;
+};
+
+const createFallbackStore = (options = {}) => {
     const now = new Date().toISOString();
-    return {
+    const persistedFile = options.persistToFile || fallbackStoreFile;
+    const existingStore = readFallbackStore(persistedFile);
+    const baseStore = existingStore || {
         offices: [],
         events: [],
         users: [{
@@ -37,6 +122,18 @@ const createFallbackStore = () => {
         settings: [{ setting_key: 'active_menu', setting_value: JSON.stringify('dashboard') }],
         typhoonHistory: []
     };
+
+    const proxyStore = createPersistedProxy(baseStore, persistedFile, () => persistFallbackStore(baseStore, persistedFile));
+    persistFallbackStore(baseStore, persistedFile);
+    return proxyStore;
+};
+
+const loadFallbackStore = (filePath = fallbackStoreFile) => {
+    const readStore = readFallbackStore(filePath);
+    if (!readStore) {
+        return createFallbackStore({ persistToFile: filePath });
+    }
+    return createPersistedProxy(readStore, filePath, () => persistFallbackStore(readStore, filePath));
 };
 
 const fallbackStore = createFallbackStore();
@@ -56,6 +153,154 @@ const serializeFallbackValue = (value) => {
 };
 
 const normalizeSql = (sql) => (sql || '').replace(/\s+/g, ' ').trim();
+
+// Default office data to seed into the database
+const DEFAULT_OFFICE_DATA = {
+    'PSTO-Ilocos Norte': {
+        warning_signals: {},
+        general_weather: '',
+        related_incidents: 0,
+        casualties: 0,
+        power_status: '',
+        communication_lines: '',
+        damage_facilities: '',
+        work_suspension: false,
+        assistance_provided: '',
+        remark: '',
+        remark_related_incidents: '',
+        remark_casualties: '',
+        remark_power_status: '',
+        remark_communication_lines: '',
+        remark_damage_facilities: '',
+        remark_work_suspension: '',
+        remark_assistance_provided: '',
+        imageUrl: '',
+        municipalities: ['Laoag City', 'Batac City', 'Pagudpud'],
+        damage_details: [],
+        equipment_details: [],
+        affected_staff: []
+    },
+    'PSTO-Ilocos Sur': {
+        warning_signals: {},
+        general_weather: '',
+        related_incidents: 0,
+        casualties: 0,
+        power_status: '',
+        communication_lines: '',
+        damage_facilities: '',
+        work_suspension: false,
+        assistance_provided: '',
+        remark: '',
+        remark_related_incidents: '',
+        remark_casualties: '',
+        remark_power_status: '',
+        remark_communication_lines: '',
+        remark_damage_facilities: '',
+        remark_work_suspension: '',
+        remark_assistance_provided: '',
+        imageUrl: '',
+        municipalities: ['Vigan City', 'Candon City', 'Santa Maria'],
+        damage_details: [],
+        equipment_details: [],
+        affected_staff: []
+    },
+    'PSTO-La Union': {
+        warning_signals: {},
+        general_weather: '',
+        related_incidents: 0,
+        casualties: 0,
+        power_status: '',
+        communication_lines: '',
+        damage_facilities: '',
+        work_suspension: false,
+        assistance_provided: '',
+        remark: '',
+        remark_related_incidents: '',
+        remark_casualties: '',
+        remark_power_status: '',
+        remark_communication_lines: '',
+        remark_damage_facilities: '',
+        remark_work_suspension: '',
+        remark_assistance_provided: '',
+        imageUrl: '',
+        municipalities: ['San Fernando', 'Bauang', 'Agoo', 'Luna', 'Bacnotan', 'Bangar', 'San Juan'],
+        damage_details: [],
+        equipment_details: [],
+        affected_staff: []
+    },
+    'PSTO-Pangasinan': {
+        warning_signals: {},
+        general_weather: '',
+        related_incidents: 0,
+        casualties: 0,
+        power_status: '',
+        communication_lines: '',
+        damage_facilities: '',
+        work_suspension: false,
+        assistance_provided: '',
+        remark: '',
+        remark_related_incidents: '',
+        remark_casualties: '',
+        remark_power_status: '',
+        remark_communication_lines: '',
+        remark_damage_facilities: '',
+        remark_work_suspension: '',
+        remark_assistance_provided: '',
+        imageUrl: '',
+        municipalities: ['Lingayen', 'Dagupan', 'Alaminos'],
+        damage_details: [],
+        equipment_details: [],
+        affected_staff: []
+    },
+    'PSTO-Ilocos Sur - FO': {
+        warning_signals: {},
+        general_weather: '',
+        related_incidents: 0,
+        casualties: 0,
+        power_status: '',
+        communication_lines: '',
+        damage_facilities: '',
+        work_suspension: false,
+        assistance_provided: '',
+        remark: '',
+        remark_related_incidents: '',
+        remark_casualties: '',
+        remark_power_status: '',
+        remark_communication_lines: '',
+        remark_damage_facilities: '',
+        remark_work_suspension: '',
+        remark_assistance_provided: '',
+        imageUrl: '',
+        municipalities: ['Vigan City', 'Candon City', 'Santa Maria'],
+        damage_details: [],
+        equipment_details: [],
+        affected_staff: []
+    },
+    'PSTO-Pangasinan - FO': {
+        warning_signals: {},
+        general_weather: '',
+        related_incidents: 0,
+        casualties: 0,
+        power_status: '',
+        communication_lines: '',
+        damage_facilities: '',
+        work_suspension: false,
+        assistance_provided: '',
+        remark: '',
+        remark_related_incidents: '',
+        remark_casualties: '',
+        remark_power_status: '',
+        remark_communication_lines: '',
+        remark_damage_facilities: '',
+        remark_work_suspension: '',
+        remark_assistance_provided: '',
+        imageUrl: '',
+        municipalities: ['Lingayen', 'Dagupan', 'Alaminos'],
+        damage_details: [],
+        equipment_details: [],
+        affected_staff: []
+    },
+};
 
 const getFallbackTableRows = (tableName) => {
     switch (tableName) {
@@ -81,6 +326,7 @@ const setFallbackTableRows = (tableName, rows) => {
         case 'typhoon_history': fallbackStore.typhoonHistory = rows; break;
         default: break;
     }
+    persistFallbackStore(fallbackStore);
 };
 
 const fallbackQuery = async (sql, params = []) => {
@@ -127,6 +373,7 @@ const fallbackQuery = async (sql, params = []) => {
             } else {
                 fallbackStore.offices.push(row);
             }
+            persistFallbackStore(fallbackStore);
             return { rows: [row] };
         }
 
@@ -134,6 +381,7 @@ const fallbackQuery = async (sql, params = []) => {
             const nextId = fallbackStore.events.length + 1;
             row.id = row.id || nextId;
             fallbackStore.events.push(row);
+            persistFallbackStore(fallbackStore);
             return { rows: [row] };
         }
 
@@ -141,6 +389,7 @@ const fallbackQuery = async (sql, params = []) => {
             const nextId = fallbackStore.users.length + 1;
             row.id = row.id || nextId;
             fallbackStore.users.push(row);
+            persistFallbackStore(fallbackStore);
             return { rows: [row] };
         }
 
@@ -148,6 +397,7 @@ const fallbackQuery = async (sql, params = []) => {
             const nextId = fallbackStore.pendingReports.length + 1;
             row.id = row.id || nextId;
             fallbackStore.pendingReports.push(row);
+            persistFallbackStore(fallbackStore);
             return { rows: [row] };
         }
 
@@ -155,6 +405,7 @@ const fallbackQuery = async (sql, params = []) => {
             const nextId = fallbackStore.notifications.length + 1;
             row.id = row.id || nextId;
             fallbackStore.notifications.push(row);
+            persistFallbackStore(fallbackStore);
             return { rows: [row] };
         }
 
@@ -165,6 +416,7 @@ const fallbackQuery = async (sql, params = []) => {
             } else {
                 fallbackStore.settings.push(row);
             }
+            persistFallbackStore(fallbackStore);
             return { rows: [row] };
         }
 
@@ -172,6 +424,7 @@ const fallbackQuery = async (sql, params = []) => {
             const nextId = fallbackStore.typhoonHistory.length + 1;
             row.id = row.id || nextId;
             fallbackStore.typhoonHistory.push(row);
+            persistFallbackStore(fallbackStore);
             return { rows: [row] };
         }
 
@@ -188,6 +441,7 @@ const fallbackQuery = async (sql, params = []) => {
             if (target) {
                 target.read = true;
             }
+            persistFallbackStore(fallbackStore);
         }
 
         if (tableName === 'users') {
@@ -201,6 +455,7 @@ const fallbackQuery = async (sql, params = []) => {
                 target.status = params[4];
                 target.profile_image = params[5] || null;
             }
+            persistFallbackStore(fallbackStore);
         }
 
         return { rows: [] };
@@ -455,6 +710,28 @@ const initializeDatabase = async () => {
             ON CONFLICT (email) DO NOTHING
         `);
         console.log('✅ Default admin user ready');
+
+        // Seed default office data
+        const existingCount = await query('SELECT COUNT(*) AS cnt FROM offices');
+        if (existingCount[0]?.cnt === 0) {
+            for (const [officeName, officeData] of Object.entries(DEFAULT_OFFICE_DATA)) {
+                await query(
+                    `INSERT INTO offices (office_name, data, municipalities, damage_details, affected_staff)
+                     VALUES ($1, $2, $3, $4, $5)
+                     ON CONFLICT (office_name) DO NOTHING`,
+                    [
+                        officeName,
+                        JSON.stringify(officeData),
+                        JSON.stringify(officeData.municipalities || []),
+                        JSON.stringify(officeData.damage_details || []),
+                        JSON.stringify(officeData.affected_staff || [])
+                    ]
+                );
+            }
+            console.log('✅ Default office data seeded');
+        } else {
+            console.log('ℹ️ Office data already exists, skipping seed');
+        }
         console.log('');
         console.log('🎉 PostgreSQL setup complete! Your database is ready.');
     } catch (err) {
@@ -970,4 +1247,4 @@ if (require.main === module) {
     });
 }
 
-module.exports = { app, createFallbackStore };
+module.exports = { app, createFallbackStore, loadFallbackStore, persistFallbackStore };

@@ -35,6 +35,7 @@ import {
     EventDetailsModal,
     TyphoonHistoryContent
 } from './dashboard/DashboardSections';
+import { buildBondPaperReportHtml, buildExcelExportRows } from './dashboard/reportUtils';
 
 // Import AddEventModal directly
 import AddEventModal from './dashboard/AddEventModal';
@@ -518,6 +519,7 @@ const Dashboard = ({ onLogout, currentUser }) => {
         const suppressRemotePushRef = useRef(false);
         const syncBootstrappedRef = useRef(false);
         const syncPushTimerRef = useRef(null);
+        const reportPreviewWindowRef = useRef(null);
 
         // --- Toast ---
         const [toast, showToast] = useToast();
@@ -2329,329 +2331,14 @@ const Dashboard = ({ onLogout, currentUser }) => {
             }
         }, []);
 
-        // --- Excel Export ---
+        // --- Excel / Report Export ---
         const handleExportExcel = useCallback(() => {
             try {
                 const wb = XLSX.utils.book_new();
-
-                const reportData = [];
-                reportData.push(['SITUATIONAL REPORT']);
-                reportData.push([]);
-                reportData.push(['SITUATIONAL REPORT NO.', '2']);
-                reportData.push(['TROPICAL CYCLONE:', activeEvent?.name || 'N/A']);
-                reportData.push(['CATEGORY:', activeEvent?.category || 'N/A']);
-                reportData.push(['DATE:', new Date().toLocaleString()]);
-                reportData.push([]);
-                reportData.push(['I. SITUATION SUMMARY']);
-                reportData.push([]);
-                reportData.push(['A. GENERAL WEATHER CONDITION']);
-                reportData.push(['PROVINCE', 'TROPICAL CYCLONE WARNING SIGNAL', 'GENERAL WEATHER SITUATION']);
-
-                ALL_PROVINCES.forEach(prov => {
-                    const officeKey = Object.keys(officesData).find(key => key.includes(prov));
-                    const data = officeKey ? officesData[officeKey] : null;
-                    const signals = data?.warning_signals ?
-                        Object.entries(data.warning_signals).map(([mun, sig]) => `${mun} (Signal ${sig})`).join('; ') :
-                        'No signal';
-                    reportData.push([prov, signals, data?.general_weather || '']);
-                });
-                reportData.push([]);
-                reportData.push(['II. EFFECTS']);
-                reportData.push([]);
-                reportData.push(['A. RELATED INCIDENTS']);
-                reportData.push(['OFFICE', 'INCIDENTS', 'REMARKS']);
-                Object.entries(officesData).forEach(([office, data]) => {
-                    const incidents = data.related_incidents || 0;
-                    reportData.push([
-                        office,
-                        `${incidents} - ${incidents === 0 ? 'No incidents reported' : incidents + ' incident(s) reported'}`,
-                        data.remark_related_incidents || ''
-                    ]);
-                });
-                reportData.push([]);
-                reportData.push(['B. CASUALTIES']);
-                reportData.push(['PROVINCE', 'CASUALTIES', 'REMARKS']);
-                Object.entries(officesData).forEach(([office, data]) => {
-                    const casualties = data.casualties || 0;
-                    reportData.push([
-                        office,
-                        `${casualties} - ${casualties === 0 ? 'No casualties reported' : casualties + ' casualty(ies) reported'}`,
-                        data.remark_casualties || ''
-                    ]);
-                });
-                reportData.push([]);
-                reportData.push(['C. POWER']);
-                reportData.push(['PROVINCE', 'POWER STATUS', 'REMARKS']);
-                Object.entries(officesData).forEach(([office, data]) => {
-                    reportData.push([
-                        office,
-                        data.power_status || '0 - No data',
-                        data.remark_power_status || ''
-                    ]);
-                });
-                reportData.push([]);
-                reportData.push(['D. COMMUNICATION LINES']);
-                reportData.push(['PROVINCE', 'COMMUNICATION STATUS', 'REMARKS']);
-                Object.entries(officesData).forEach(([office, data]) => {
-                    reportData.push([
-                        office,
-                        data.communication_lines || '0 - No data',
-                        data.remark_communication_lines || ''
-                    ]);
-                });
-                reportData.push([]);
-                reportData.push(['E. DAMAGE TO FACILITIES/EQUIPMENT']);
-                reportData.push(['PROVINCE', 'DAMAGE STATUS', 'REMARKS']);
-                Object.entries(officesData).forEach(([office, data]) => {
-                    reportData.push([
-                        office,
-                        data.damage_facilities || '0 - No damage reported',
-                        data.remark_damage_facilities || ''
-                    ]);
-                });
-                reportData.push([]);
-                reportData.push(['F. WORK SUSPENSION']);
-                reportData.push(['PROVINCE', 'SUSPENSION STATUS', 'REMARKS']);
-                Object.entries(officesData).forEach(([office, data]) => {
-                    const suspension = data.work_suspension ? '1 - Work Suspension declared' : '0 - No suspension';
-                    reportData.push([
-                        office,
-                        suspension,
-                        data.remark_work_suspension || ''
-                    ]);
-                });
-                reportData.push([]);
-                reportData.push(['G. ASSISTANCE PROVIDED']);
-                reportData.push(['PROVINCE', 'ASSISTANCE', 'REMARKS']);
-                Object.entries(officesData).forEach(([office, data]) => {
-                    reportData.push([
-                        office,
-                        data.assistance_provided || 'None',
-                        data.remark_assistance_provided || ''
-                    ]);
-                });
-                reportData.push([]);
-                reportData.push(['DAMAGE BUILDING DETAILS']);
-                reportData.push(['PROVINCE', 'DESCRIPTION', 'COST', 'STATUS', 'DATE']);
-                let hasBuildingDamage = false;
-                Object.entries(officesData).forEach(([office, data]) => {
-                    if (data.damage_details && data.damage_details.length > 0) {
-                        hasBuildingDamage = true;
-                        data.damage_details.forEach(damage => {
-                            reportData.push([
-                                office,
-                                damage.description || '',
-                                damage.cost ? `₱${damage.cost}` : '',
-                                damage.status || 'Reported',
-                                damage.date ? new Date(damage.date).toLocaleDateString() : ''
-                            ]);
-                        });
-                    }
-                });
-                if (!hasBuildingDamage) {
-                    reportData.push(['No building damage records reported.', '', '', '', '']);
-                }
-                reportData.push([]);
-                reportData.push(['EQUIPMENT DAMAGE DETAILS']);
-                reportData.push(['PROVINCE', 'EQUIPMENT NAME', 'DESCRIPTION', 'COST', 'STATUS', 'DATE']);
-                let hasEquipmentDamage = false;
-                Object.entries(officesData).forEach(([office, data]) => {
-                    if (data.equipment_details && data.equipment_details.length > 0) {
-                        hasEquipmentDamage = true;
-                        data.equipment_details.forEach(equip => {
-                            reportData.push([
-                                office,
-                                equip.name || '',
-                                equip.description || '',
-                                equip.cost ? `₱${equip.cost}` : '',
-                                equip.status || 'Reported',
-                                equip.date ? new Date(equip.date).toLocaleDateString() : ''
-                            ]);
-                        });
-                    }
-                });
-                if (!hasEquipmentDamage) {
-                    reportData.push(['No equipment damage records reported.', '', '', '', '', '']);
-                }
-                reportData.push([]);
-                reportData.push(['AFFECTED STAFF DETAILS']);
-                reportData.push(['PROVINCE', 'STAFF NAME', 'AREA', 'ASSISTANCE', 'STATUS']);
-                let hasStaff = false;
-                Object.entries(officesData).forEach(([office, data]) => {
-                    if (data.affected_staff && data.affected_staff.length > 0) {
-                        hasStaff = true;
-                        data.affected_staff.forEach(staff => {
-                            reportData.push([
-                                office,
-                                staff.name || '',
-                                staff.area || '',
-                                staff.assistance || 'None',
-                                staff.status || 'Active'
-                            ]);
-                        });
-                    }
-                });
-                if (!hasStaff) {
-                    reportData.push(['No affected staff records reported.', '', '', '', '']);
-                }
-                reportData.push([]);
-                reportData.push(['NARRATIVE SUMMARY']);
-                const narrative = Object.values(officesData).map(office => office.remark).filter(Boolean).join(' ') || 'No additional remarks.';
-                reportData.push([narrative]);
-                reportData.push([]);
-                reportData.push(['Prepared by:']);
-                reportData.push(['DOST 1 DRRM OFFICERS']);
-                reportData.push(['Regional/Provincial Focal']);
-                reportData.push(['']);
-                reportData.push(['EDRUSSELL S. CASTILLO']);
-                reportData.push(['Project Technical Assistant I']);
-                reportData.push(['DRRM Unit Staff']);
-                reportData.push(['']);
-                reportData.push(['MICHAEL JOHN C. MAQUILING']);
-                reportData.push(['Supervising Science Research Specialist']);
-                reportData.push(['DRRMU Regional Focal']);
-                reportData.push([]);
-                reportData.push(['Noted by:']);
-                reportData.push([]);
-                reportData.push(['DR. TERESITA A. TABAOG']);
-                reportData.push(['Regional Director']);
-
+                const reportData = buildExcelExportRows({ activeEvent, officesData });
                 const ws = XLSX.utils.aoa_to_sheet(reportData);
-
-                // Set professional column widths
-                ws['!cols'] = [
-                    { wch: 20 }, { wch: 35 }, { wch: 35 }, { wch: 20 }, { wch: 20 }
-                ].concat(Array(95).fill({ wch: 18 }));
-
-                // Define styles
-                const titleStyle = {
-                    fill: { fgColor: { rgb: 'FF203864' } },
-                    font: { bold: true, color: { rgb: 'FFFFFFFF' }, size: 14 },
-                    alignment: { horizontal: 'left', vertical: 'center' },
-                    border: { bottom: { style: 'medium' } }
-                };
-                const headerStyle = {
-                    fill: { fgColor: { rgb: 'FF4472C4' } },
-                    font: { bold: true, color: { rgb: 'FFFFFFFF' } },
-                    alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
-                    border: { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } }
-                };
-                const sectionHeaderStyle = {
-                    fill: { fgColor: { rgb: 'FF70AD47' } },
-                    font: { bold: true, color: { rgb: 'FFFFFFFF' } },
-                    alignment: { horizontal: 'left', vertical: 'center' },
-                    border: { bottom: { style: 'thin' } }
-                };
-                const dataStyle = {
-                    alignment: { horizontal: 'left', vertical: 'top', wrapText: true },
-                    border: { top: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' }, bottom: { style: 'thin' } }
-                };
-
-                // Apply styles to cells
-                let rowNum = 1;
-                // Title row
-                if (ws[`A${rowNum}`]) ws[`A${rowNum}`].s = titleStyle;
-
-                // Apply header styles to all header rows
-                for (const cellRef in ws) {
-                    if (cellRef.match(/^[A-Z]+\d+$/)) {
-                        const row = parseInt(cellRef.match(/\d+$/)[0]);
-                        const col = cellRef.match(/^[A-Z]+/)[0];
-                        const cellValue = ws[cellRef]?.v;
-
-                        // Apply title style to main title
-                        if (row === 1) {
-                            ws[cellRef].s = titleStyle;
-                        }
-                        // Apply section header style to roman numeral sections (I., II., III., etc.)
-                        else if (cellValue && String(cellValue).match(/^(I+|IV|IX|X+)\./)) {
-                            ws[cellRef].s = sectionHeaderStyle;
-                        }
-                        // Apply section header style to subsection headers (A., B., C., etc.)
-                        else if (cellValue && String(cellValue).match(/^[A-G]\./)) {
-                            ws[cellRef].s = sectionHeaderStyle;
-                        }
-                        // Apply header style to table headers (PROVINCE, INCIDENTS, REMARKS, etc.)
-                        else if (cellValue && (String(cellValue).includes('PROVINCE') || String(cellValue).includes('OFFICE') ||
-                            String(cellValue).includes('INCIDENTS') || String(cellValue).includes('REMARKS') ||
-                            String(cellValue).includes('TROPICAL CYCLONE') || String(cellValue).includes('GENERAL WEATHER') ||
-                            String(cellValue).includes('CASUALTIES') || String(cellValue).includes('POWER') ||
-                            String(cellValue).includes('COMMUNICATION') || String(cellValue).includes('DAMAGE') ||
-                            String(cellValue).includes('SUSPENSION') || String(cellValue).includes('ASSISTANCE') ||
-                            String(cellValue).includes('DESCRIPTION') || String(cellValue).includes('COST') ||
-                            String(cellValue).includes('STATUS') || String(cellValue).includes('DATE') ||
-                            String(cellValue).includes('EQUIPMENT') || String(cellValue).includes('STAFF') ||
-                            String(cellValue).includes('AREA') || String(cellValue).includes('NAME'))) {
-                            ws[cellRef].s = headerStyle;
-                        }
-                        // Apply data style with wrapping
-                        else if (!ws[cellRef].s) {
-                            ws[cellRef].s = dataStyle;
-                        }
-                    }
-                }
-
-                // Set row heights for better visibility
-                ws['!rows'] = [];
-                ws['!rows'][0] = { hpt: 25 }; // Title row
-                ws['!rows'][10] = { hpt: 20 }; // Header rows
-                ws['!rows'][22] = { hpt: 20 };
-
+                ws['!cols'] = Array(6).fill({ wch: 22 });
                 XLSX.utils.book_append_sheet(wb, ws, 'SITREP');
-
-                // Raw data sheet
-                const rawData = [];
-                const headers = [
-                    'PSTO Office', 'Warning Signals', 'General Weather', 'Related Incidents',
-                    'Incident Remarks', 'Casualties', 'Casualty Remarks', 'Power Status',
-                    'Power Remarks', 'Communication', 'Comm Remarks', 'Damage',
-                    'Damage Remarks', 'Work Suspension', 'Work Suspension Remarks',
-                    'Assistance', 'Assistance Remarks', 'Overall Remarks',
-                    'Building Damage Count', 'Equipment Damage Count', 'Affected Staff Count'
-                ];
-                rawData.push(headers);
-                Object.entries(officesData).forEach(([office, data]) => {
-                    const signals = Object.entries(data.warning_signals || {})
-                        .map(([mun, sig]) => `${mun}: ${sig}`)
-                        .join('; ') || 'None';
-                    rawData.push([
-                        office, signals, data.general_weather || '',
-                        data.related_incidents ?? 0, data.remark_related_incidents || '',
-                        data.casualties ?? 0, data.remark_casualties || '',
-                        data.power_status || '', data.remark_power_status || '',
-                        data.communication_lines || '', data.remark_communication_lines || '',
-                        data.damage_facilities || '', data.remark_damage_facilities || '',
-                        data.work_suspension ? 'Yes' : 'No', data.remark_work_suspension || '',
-                        data.assistance_provided || '', data.remark_assistance_provided || '',
-                        data.remark || '',
-                        (data.damage_details || []).length,
-                        (data.equipment_details || []).length,
-                        (data.affected_staff || []).length
-                    ]);
-                });
-
-                const wsRaw = XLSX.utils.aoa_to_sheet(rawData);
-
-                // Set compact uniform column widths for alignment
-                wsRaw['!cols'] = Array(headers.length).fill({ wch: 15 });
-
-                // Format header row in raw data
-                headers.forEach((_, idx) => {
-                    const cellRef = XLSX.utils.encode_col(idx) + '1';
-                    if (wsRaw[cellRef]) {
-                        wsRaw[cellRef].s = { ...headerStyle };
-                    }
-                });
-
-                // Enable wrapping for all cells in raw data
-                for (const key in wsRaw) {
-                    if (key.match(/^[A-Z]+\d+$/)) {
-                        if (!wsRaw[key].s) wsRaw[key].s = {};
-                        wsRaw[key].s.alignment = { ...wsRaw[key].s.alignment, wrapText: true };
-                    }
-                }
-
-                XLSX.utils.book_append_sheet(wb, wsRaw, 'Raw Data');
                 XLSX.writeFile(wb, `SITREP_${activeEvent?.name || 'NO_EVENT'}_${new Date().toISOString().slice(0, 19)}.xlsx`);
                 showToast('Situational Report exported successfully.', 'success');
                 addNotification('Excel Exported', 'Complete SITREP exported with proper formatting.', 'success');
@@ -2659,215 +2346,45 @@ const Dashboard = ({ onLogout, currentUser }) => {
                 console.error('handleExportExcel error:', e);
                 showToast('Failed to export Excel.', 'error');
             }
-        }, [officesData, activeEvent, showToast, addNotification]);
+        }, [activeEvent, officesData, showToast, addNotification]);
 
-        // --- Report Generation ---
         const buildReportHtml = useCallback(() => {
             try {
-                const generatedAt = new Date().toLocaleString();
-                const reportOffices = Object.entries(officesData);
-
-                const summaryRows = reportOffices.map(([officeName, officeData]) => {
-                    const warningTags = Object.entries(officeData.warning_signals || {}).map(([mun, signal]) => `${mun} (Signal ${signal})`).join('; ') || 'None';
-                    return `<tr><td style="border:1px solid #000;padding:8px;">${officeName}</td><td style="border:1px solid #000;padding:8px;">${warningTags}</td><td style="border:1px solid #000;padding:8px;">${officeData.general_weather || 'N/A'}</td></tr>`;
-                }).join('');
-
-                return `
-                    <!DOCTYPE html>
-                    <html>
-                    <head>
-                        <meta charset="UTF-8">
-                        <title>DOST-1 Situational Report</title>
-                        <style>
-                            body { font-family: Arial, sans-serif; margin: 20px; }
-                            h1 { font-size: 18px; margin: 10px 0; }
-                            h2 { font-size: 16px; margin: 10px 0; }
-                            h3 { font-size: 14px; margin: 10px 0; }
-                            h4 { font-size: 13px; margin: 8px 0; }
-                            table { width: 100%; border-collapse: collapse; margin: 10px 0; }
-                            th, td { border: 1px solid #000; padding: 8px; vertical-align: top; }
-                            th { background: #f0f0f0; font-weight: bold; }
-                            .footer { margin-top: 20px; font-size: 12px; }
-                        </style>
-                    </head>
-                    <body>
-                        <h1>SITUATIONAL REPORT NO. 1</h1>
-                        <p><strong>Event:</strong> ${activeEvent?.name || 'None'} | <strong>Category:</strong> ${activeEvent?.category || 'N/A'} | <strong>Alert Level:</strong> ${activeEvent?.alertLevel || 'N/A'} | <strong>Generated:</strong> ${generatedAt}</p>
-                        
-                        <h3>I. TROPICAL CYCLONE WARNING SIGNALS</h3>
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>OFFICE</th>
-                                    <th>WARNING SIGNALS</th>
-                                    <th>GENERAL WEATHER</th>
-                                </tr>
-                            </thead>
-                            <tbody>${summaryRows}</tbody>
-                        </table>
-                        
-                        <h3>II. EFFECTS</h3>
-                        
-                        <h4>A. Related Incidents</h4>
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>OFFICE</th>
-                                    <th>INCIDENTS</th>
-                                    <th>REMARKS</th>
-                                </tr>
-                            </thead>
-                            <tbody>${reportOffices.map(([officeName, officeData]) =>
-                    `<tr><td style="border:1px solid #000;padding:8px;">${officeName}</td><td style="border:1px solid #000;padding:8px;">${officeData.related_incidents ?? 0}</td><td style="border:1px solid #000;padding:8px;">${officeData.remark_related_incidents || '-'}</td></tr>`
-                ).join('')}</tbody>
-                        </table>
-                        
-                        <h4>B. Casualties</h4>
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>OFFICE</th>
-                                    <th>CASUALTIES</th>
-                                    <th>REMARKS</th>
-                                </tr>
-                            </thead>
-                            <tbody>${reportOffices.map(([officeName, officeData]) =>
-                    `<tr><td style="border:1px solid #000;padding:8px;">${officeName}</td><td style="border:1px solid #000;padding:8px;">${officeData.casualties ?? 0}</td><td style="border:1px solid #000;padding:8px;">${officeData.remark_casualties || '-'}</td></tr>`
-                ).join('')}</tbody>
-                        </table>
-                        
-                        <h4>C. Power Status</h4>
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>OFFICE</th>
-                                    <th>STATUS</th>
-                                    <th>REMARKS</th>
-                                </tr>
-                            </thead>
-                            <tbody>${reportOffices.map(([officeName, officeData]) =>
-                    `<tr><td style="border:1px solid #000;padding:8px;">${officeName}</td><td style="border:1px solid #000;padding:8px;">${officeData.power_status || '—'}</td><td style="border:1px solid #000;padding:8px;">${officeData.remark_power_status || '-'}</td></tr>`
-                ).join('')}</tbody>
-                        </table>
-                        
-                        <h4>D. Communication Lines</h4>
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>OFFICE</th>
-                                    <th>STATUS</th>
-                                    <th>REMARKS</th>
-                                </tr>
-                            </thead>
-                            <tbody>${reportOffices.map(([officeName, officeData]) =>
-                    `<tr><td style="border:1px solid #000;padding:8px;">${officeName}</td><td style="border:1px solid #000;padding:8px;">${officeData.communication_lines || '—'}</td><td style="border:1px solid #000;padding:8px;">${officeData.remark_communication_lines || '-'}</td></tr>`
-                ).join('')}</tbody>
-                        </table>
-                        
-                        <h4>E. Damage to Facilities</h4>
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>OFFICE</th>
-                                    <th>DAMAGE</th>
-                                    <th>REMARKS</th>
-                                </tr>
-                            </thead>
-                            <tbody>${reportOffices.map(([officeName, officeData]) =>
-                    `<tr><td style="border:1px solid #000;padding:8px;">${officeName}</td><td style="border:1px solid #000;padding:8px;">${officeData.damage_facilities || '—'}</td><td style="border:1px solid #000;padding:8px;">${officeData.remark_damage_facilities || '-'}</td></tr>`
-                ).join('')}</tbody>
-                        </table>
-                        
-                        <h4>F. Work Suspension</h4>
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>OFFICE</th>
-                                    <th>SUSPENSION</th>
-                                    <th>REMARKS</th>
-                                </tr>
-                            </thead>
-                            <tbody>${reportOffices.map(([officeName, officeData]) =>
-                    `<tr><td style="border:1px solid #000;padding:8px;">${officeName}</td><td style="border:1px solid #000;padding:8px;">${officeData.work_suspension ? 'Suspended' : 'No suspension'}</td><td style="border:1px solid #000;padding:8px;">${officeData.remark_work_suspension || '-'}</td></tr>`
-                ).join('')}</tbody>
-                        </table>
-                        
-                        <h4>G. Assistance Provided</h4>
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>OFFICE</th>
-                                    <th>ASSISTANCE</th>
-                                    <th>REMARKS</th>
-                                </tr>
-                            </thead>
-                            <tbody>${reportOffices.map(([officeName, officeData]) =>
-                    `<tr><td style="border:1px solid #000;padding:8px;">${officeName}</td><td style="border:1px solid #000;padding:8px;">${officeData.assistance_provided || '—'}</td><td style="border:1px solid #000;padding:8px;">${officeData.remark_assistance_provided || '-'}</td></tr>`
-                ).join('')}</tbody>
-                        </table>
-
-                        <h3>III. DAMAGE BUILDING</h3>
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>OFFICE</th>
-                                    <th>DAMAGE RECORDS</th>
-                                </tr>
-                            </thead>
-                            <tbody>${reportOffices.map(([officeName, officeData]) => {
-                    const buildingDamages = (officeData.damage_details || []).map(d =>
-                        `<div>${d.description || ''}${d.cost ? ` - ₱${d.cost}` : ''}${d.status ? ` (${d.status})` : ''}${d.image ? ` <img src="${d.image}" style="max-width:50px;max-height:50px;" />` : ''}</div>`
-                    ).join('');
-                    const equipmentDamages = (officeData.equipment_details || []).map(e =>
-                        `<div>${e.name || ''}${e.description ? ` - ${e.description}` : ''}${e.cost ? ` - ₱${e.cost}` : ''}${e.status ? ` (${e.status})` : ''}${e.image ? ` <img src="${e.image}" style="max-width:50px;max-height:50px;" />` : ''}</div>`
-                    ).join('');
-                    const damages = (buildingDamages + equipmentDamages) || 'No damage details';
-                    return `<tr><td style="border:1px solid #000;padding:8px;">${officeName}</td><td style="border:1px solid #000;padding:8px;">${damages}</td></tr>`;
-                }).join('')}</tbody>
-                        </table>
-
-                        <h3>IV. AFFECTED STAFF</h3>
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>OFFICE</th>
-                                    <th>STAFF</th>
-                                </tr>
-                            </thead>
-                            <tbody>${reportOffices.map(([officeName, officeData]) => {
-                    const staff = (officeData.affected_staff || []).map(s =>
-                        `<div>${s.name || ''}${s.area ? ` - ${s.area}` : ''}${s.status ? ` (${s.status})` : ''}${s.assistance ? ` - Assistance: ${s.assistance}` : ''}</div>`
-                    ).join('') || 'No staff affected';
-                    return `<tr><td style="border:1px solid #000;padding:8px;">${officeName}</td><td style="border:1px solid #000;padding:8px;">${staff}</td></tr>`;
-                }).join('')}</tbody>
-                        </table>
-                        
-                        <p><strong>Narrative Summary:</strong> ${Object.values(officesData).map(office => office.remark).filter(Boolean).join(' ') || 'No additional remarks.'}</p>
-                        <p class="footer">Prepared by: DOST 1 DRRM Unit</p>
-                    </body>
-                    </html>
-                `;
+                return buildBondPaperReportHtml({ activeEvent, officesData });
             } catch (e) {
                 console.error('buildReportHtml error:', e);
                 return '<html><body><h1>Error generating report</h1></body></html>';
             }
-        }, [officesData, activeEvent]);
+        }, [activeEvent, officesData]);
+
+        const openReportPreview = useCallback((reportHtml) => {
+            try {
+                const printWindow = window.open('', '_blank', 'width=1200,height=900,scrollbars=yes');
+                if (!printWindow) {
+                    showToast('Pop-up blocked. Allow pop-ups to generate the report.', 'warning');
+                    return null;
+                }
+                reportPreviewWindowRef.current = printWindow;
+                printWindow.document.write(reportHtml);
+                printWindow.document.close();
+                printWindow.focus();
+                return printWindow;
+            } catch (e) {
+                console.error('openReportPreview error:', e);
+                showToast('Failed to generate report.', 'error');
+                return null;
+            }
+        }, [showToast]);
 
         const handleGenerateReport = useCallback(() => {
             try {
                 const reportHtml = buildReportHtml();
-                const printWindow = window.open('', '_blank');
-                if (!printWindow) {
-                    showToast('Pop-up blocked. Allow pop-ups to generate the report.', 'warning');
-                    return;
-                }
-                printWindow.document.write(reportHtml);
-                printWindow.document.close();
+                openReportPreview(reportHtml);
             } catch (e) {
                 console.error('handleGenerateReport error:', e);
                 showToast('Failed to generate report.', 'error');
             }
-        }, [buildReportHtml, showToast]);
+        }, [buildReportHtml, openReportPreview, showToast]);
 
         const handleDownloadDoc = useCallback(() => {
             try {
@@ -2887,6 +2404,42 @@ const Dashboard = ({ onLogout, currentUser }) => {
                 showToast('Failed to download document.', 'error');
             }
         }, [buildReportHtml, activeEvent, showToast]);
+
+        const handleExportPdf = useCallback(() => {
+            try {
+                const reportHtml = buildReportHtml();
+                const previewWindow = openReportPreview(reportHtml);
+                if (!previewWindow) {
+                    return;
+                }
+                setTimeout(() => {
+                    try {
+                        previewWindow.focus();
+                        previewWindow.print();
+                    } catch (printError) {
+                        console.error('handleExportPdf print error:', printError);
+                        showToast('PDF preview opened. Use the browser print dialog to save as PDF.', 'info');
+                    }
+                }, 400);
+            } catch (e) {
+                console.error('handleExportPdf error:', e);
+                showToast('Failed to prepare PDF.', 'error');
+            }
+        }, [buildReportHtml, openReportPreview, showToast]);
+
+        useEffect(() => {
+            try {
+                if (window) {
+                    window.__dashboardReportExport = {
+                        exportExcel: handleExportExcel,
+                        downloadDoc: handleDownloadDoc,
+                        exportPdf: handleExportPdf
+                    };
+                }
+            } catch (e) {
+                console.error('report export handler registration error:', e);
+            }
+        }, [handleExportExcel, handleDownloadDoc, handleExportPdf]);
 
         // --- Image Preview ---
         const openImageModal = useCallback((src) => {
@@ -3012,6 +2565,7 @@ const Dashboard = ({ onLogout, currentUser }) => {
                                 handleGenerateReport={handleGenerateReport}
                                 handleDownloadDoc={handleDownloadDoc}
                                 handleExportExcel={handleExportExcel}
+                                handleExportPdf={handleExportPdf}
                             />
 
                             {/* PSTO Controls */}

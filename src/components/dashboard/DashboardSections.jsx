@@ -588,7 +588,7 @@ const InfoBar = ({ displayWeather, activeEvent, typhoonHistory }) => (
 );
 
 // Notification Banner component
-const NotificationBanner = ({ activeEvent, handleGenerateReport, handleDownloadDoc, handleExportExcel }) => (
+const NotificationBanner = ({ activeEvent, handleGenerateReport, handleDownloadDoc, handleExportExcel, handleExportPdf }) => (
     <div className="notification-banner">
         <span className="notification-badge">SYSTEM NOTICE</span>
         <span>{activeEvent ? `Active tropical cyclone ${activeEvent.name} (${activeEvent.alertLevel}) is being monitored.` : 'No active tropical cyclone at the moment. Systems are stable.'}</span>
@@ -596,6 +596,7 @@ const NotificationBanner = ({ activeEvent, handleGenerateReport, handleDownloadD
             <button className="secondary-btn" onClick={handleGenerateReport}>📄 Generate Report</button>
             <button className="secondary-btn" onClick={handleDownloadDoc}>📥 Download DOC</button>
             <button className="secondary-btn" onClick={handleExportExcel}>📊 Export Excel</button>
+            <button className="secondary-btn" onClick={handleExportPdf}>🖨️ Export PDF</button>
         </div>
     </div>
 );

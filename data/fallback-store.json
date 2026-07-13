@@ -1,0 +1,27 @@
+{
+  "offices": [],
+  "events": [],
+  "users": [
+    {
+      "id": 1,
+      "name": "Admin User",
+      "email": "admin@dostregion1.ph",
+      "office": "PSTO-La Union",
+      "role": "SADMIN",
+      "status": "Active",
+      "password_hash": "admin123",
+      "profile_image": null,
+      "created_at": "2026-07-13T02:05:00.104Z",
+      "updated_at": "2026-07-13T02:05:00.104Z"
+    }
+  ],
+  "pendingReports": [],
+  "notifications": [],
+  "settings": [
+    {
+      "setting_key": "active_menu",
+      "setting_value": "\"dashboard\""
+    }
+  ],
+  "typhoonHistory": []
+}
