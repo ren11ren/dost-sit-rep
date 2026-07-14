@@ -1,5 +1,16 @@
-const API_PORT = process.env.REACT_APP_API_PORT || '5010';
-const API_URL = `http://${window.location.hostname}:${API_PORT}/api`;
+export const getApiBaseUrl = (hostname = window.location.hostname) => {
+  if (process.env.REACT_APP_API_URL) {
+    return process.env.REACT_APP_API_URL;
+  }
+
+  if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1') {
+    return `http://${hostname}:${process.env.REACT_APP_API_PORT || '5010'}/api`;
+  }
+
+  return '/api';
+};
+
+const API_URL = getApiBaseUrl();
 
 const apiCall = async (endpoint, method = 'GET', data = null) => {
   const options = {
@@ -7,7 +18,7 @@ const apiCall = async (endpoint, method = 'GET', data = null) => {
     headers: { 'Content-Type': 'application/json' },
   };
 
-  if (data) {
+  if (data !== null && typeof data !== 'undefined') {
     options.body = JSON.stringify(data);
   }
 
@@ -29,7 +40,7 @@ export const dbService = {
   async getUsers() { return await apiCall('/users'); },
   async saveUsers(users) { return await apiCall('/users', 'POST', users); },
   async getPendingReports() { return await apiCall('/pending-reports'); },
-  async savePendingReports(reports) { return await apiCall('/pending-reports', 'POST', reports); },
+  async savePendingReports(reports) { return await apiCall('/pending-reports', 'POST', { reports }); },
   async getNotifications() { return await apiCall('/notifications'); },
   async saveNotifications(notifications) { return await apiCall('/notifications', 'POST', notifications); },
   async getActiveMenu() { const result = await apiCall('/active-menu'); return result?.menu || 'dashboard'; },

@@ -41,6 +41,9 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --only=production --legacy-peer-deps
 COPY server.js simple-server.js ./
+COPY lib ./lib
+COPY database ./database
+COPY postgres ./postgres
 # Copy other files backend might need (like public pictures)
 COPY picture ./picture
 EXPOSE 5001 5005

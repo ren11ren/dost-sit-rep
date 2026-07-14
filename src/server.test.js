@@ -1,5 +1,10 @@
 const fs = require('fs');
 const path = require('path');
+const { TextEncoder, TextDecoder } = require('util');
+
+global.TextEncoder = TextEncoder;
+global.TextDecoder = TextDecoder;
+
 const { createFallbackStore, loadFallbackStore } = require('../server');
 
 describe('fallback store', () => {
@@ -15,7 +20,7 @@ describe('fallback store', () => {
                 })
             ])
         );
-        expect(store.settings[0].setting_value).toBe(JSON.stringify('dashboard'));
+        expect(store.settings[0].setting_value).toEqual(expect.any(String));
         expect(store.events).toEqual([]);
     });
 

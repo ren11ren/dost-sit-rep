@@ -15,6 +15,7 @@ services:
       - "5433:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U dostuser -d dostdb" ]
       interval: 10s
@@ -35,19 +36,26 @@ services:
     # To run the simple mock in-memory server, change this command to: node simple-server.js
     command: node server.js
     ports:
-      - "5001:5001" # Postgres API Server Port
+      - "5010:5010" # API Server Port used by the app
       - "5005:5005" # In-memory API Server Port
     volumes:
       - .:/app
       - /app/node_modules
     environment:
       - NODE_ENV=development
+      - PORT=5010
+      - DB_SSL=false
       - DATABASE_URL=postgres://dostuser:dostpass@postgres:5432/dostdb
       - DB_HOST=postgres
       - DB_PORT=5432
       - DB_USER=dostuser
       - DB_PASSWORD=dostpass
       - DB_NAME=dostdb
+      - DB_CONNECT_RETRIES=20
+      - DB_CONNECT_RETRY_DELAY_MS=2000
+      - ALLOW_DEGRADED_DB_MODE=false
+      - CORS_ALLOW_ALL=true
+      - CORS_ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,http://0.0.0.0:3000,http://host.docker.internal:3000
     env_file:
       - .env
     depends_on:
@@ -73,6 +81,8 @@ services:
     environment:
       - NODE_ENV=development
       - BROWSER=none # Prevent opening browser tab inside container
+      - HOST=0.0.0.0
+      - CORS_ALLOW_ALL=true
       - WDS_SOCKET_PORT=3000 # Hot-reloading socket port
     stdin_open: true # Keeps the react-scripts terminal active
     tty: true # Connects standard input/output channels
@@ -89,7 +99,7 @@ services:
     container_name: dost-ilocos-ngrok
     restart: unless-stopped
     environment:
-      NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN:-}
+      NGROK_AUTHTOKEN: "3G4fGosyJdPOeWvG38y8EOLfX1S_4REipfsR1GK2ocxNGctCk"
     command:
       - http
       - http://frontend:3000

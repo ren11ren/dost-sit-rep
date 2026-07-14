@@ -1604,21 +1604,26 @@ const Dashboard = ({ onLogout, currentUser }) => {
                     remarks: ''
                 };
 
-                setPendingReports(prev => [newReport, ...prev]);
-                // Persist pending reports to backend immediately and trigger a sync push
+                const nextReports = [newReport, ...pendingReports.filter(r => r.id !== newReport.id)];
+                setPendingReports(nextReports);
+
                 (async () => {
                     try {
-                        // Save pending reports list on server
-                        const serverReports = Array.isArray(await dbService.getPendingReports()) ? await dbService.getPendingReports() : [];
-                        const merged = [newReport, ...serverReports.filter(r => r.id !== newReport.id)];
-                        await dbService.savePendingReports(merged);
+                        await dbService.savePendingReports([newReport]);
 
-                        // Trigger a sync push so other clients pulling the server will receive updates quickly
                         try {
                             const localTs = Date.now();
-                            await dbService.syncAllData({ officesData, events, users, pendingReports: merged, notifications, activeMenu, typhoonHistory, _localTs: localTs });
+                            await dbService.syncAllData({
+                                officesData,
+                                events,
+                                users,
+                                pendingReports: nextReports,
+                                notifications,
+                                activeMenu,
+                                typhoonHistory,
+                                _localTs: localTs
+                            });
                         } catch (syncErr) {
-                            // Not critical; others will pick up via polling
                             console.warn('syncAllData warning:', syncErr);
                         }
                     } catch (e) {
