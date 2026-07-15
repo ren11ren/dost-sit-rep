@@ -217,13 +217,13 @@ const REGION_1_IMG = 'data:image/svg+xml,' + encodeURIComponent(`
 
 // Map office keys to their images
 const OFFICE_IMAGE_MAP = {
-    'DOST Ilocos Norte': DOST_ILOCOS_NORTE_IMG,
-    'DOST Ilocos Sur': DOST_ILOCOS_SUR_IMG,
-    'DOST-La Union': DOST_LA_UNION_IMG,
-    'DOST-Pangasinan': DOST_PANGASINAN_IMG,
-    'DOST-Ilocos Sur - FO': DOST_ILOCOS_SUR_IMG,
-    'DOST-Pangasinan - FO': DOST_PANGASINAN_IMG,
-    'DOST-Ilocos Region': DOST_ILOCOS_REGION_IMG,
+    'DOST-Ilocos Norte': PSTO_ILOCOS_NORTE_IMG,
+    'DOST-Ilocos Sur': PSTO_ILOCOS_SUR_IMG,
+    'DOST-La Union': PSTO_LA_UNION_IMG,
+    'DOST-Pangasinan': PSTO_PANGASINAN_IMG,
+    'DOST-Ilocos Sur - FO': PSTO_ILOCOS_SUR_IMG,
+    'DOST-Pangasinan - FO': PSTO_PANGASINAN_IMG,
+    'DOST-Ilocos Region': PSTO_ILOCOS_REGION_IMG,
 };
 
 // ============================================================
@@ -800,7 +800,7 @@ const Dashboard = ({ onLogout, currentUser }) => {
 
         const currentOfficeData = useMemo(() => {
             try {
-                if (selectedOffice === 'PSTO-Region-1') {
+                if (selectedOffice === 'DOST-Region-1') {
                     return {
                         general_weather: liveWeather ? `${liveWeather.condition}, ${liveWeather.temp}°C` : 'Fetching live weather...',
                         related_incidents: regionSummary.incidents,
@@ -1211,7 +1211,7 @@ const Dashboard = ({ onLogout, currentUser }) => {
         // --- Handle Edit Toggle ---
         const handleEditToggle = useCallback(() => {
             try {
-                if (selectedOffice === 'PSTO-Region-1') {
+                if (selectedOffice === 'DOST-Region-1') {
                     showToast('Cannot edit Ilocos Region summary. Select a specific PSTO office.', 'warning');
                     return;
                 }
@@ -1234,7 +1234,7 @@ const Dashboard = ({ onLogout, currentUser }) => {
         // --- Handle Save ---
         const handleSave = useCallback(() => {
             try {
-                if (selectedOffice === 'PSTO-Region-1') {
+                if (selectedOffice === 'DOST-Region-1') {
                     showToast('Cannot save Ilocos Region data directly. Select a specific PSTO office.', 'warning');
                     return;
                 }
@@ -3264,7 +3264,7 @@ const Dashboard = ({ onLogout, currentUser }) => {
                                                         <div className="warning-col weather-col">
                                                             <div className="warning-panel weather-panel">
                                                                 <div className="weather-text">
-                                                                    {selectedOffice === 'PSTO-Region-1' ? displayWeather : (displayEvent.general_weather || 'No weather data reported')}
+                                                                    {selectedOffice === 'DOST-Region-1' ? displayWeather : (displayEvent.general_weather || 'No weather data reported')}
                                                                 </div>
                                                             </div>
                                                         </div>
