@@ -217,13 +217,13 @@ const REGION_1_IMG = 'data:image/svg+xml,' + encodeURIComponent(`
 
 // Map office keys to their images
 const OFFICE_IMAGE_MAP = {
-    'PSTO-Ilocos Norte': PSTO_ILOCOS_NORTE_IMG,
-    'PSTO-Ilocos Sur': PSTO_ILOCOS_SUR_IMG,
-    'PSTO-La Union': PSTO_LA_UNION_IMG,
-    'PSTO-Pangasinan': PSTO_PANGASINAN_IMG,
-    'PSTO-Ilocos Sur - FO': PSTO_ILOCOS_SUR_IMG,
-    'PSTO-Pangasinan - FO': PSTO_PANGASINAN_IMG,
-    'PSTO-Ilocos Region': PSTO_ILOCOS_REGION_IMG,
+    'DOST Ilocos Norte': DOST_ILOCOS_NORTE_IMG,
+    'DOST Ilocos Sur': DOST_ILOCOS_SUR_IMG,
+    'DOST-La Union': DOST_LA_UNION_IMG,
+    'DOST-Pangasinan': DOST_PANGASINAN_IMG,
+    'DOST-Ilocos Sur - FO': DOST_ILOCOS_SUR_IMG,
+    'DOST-Pangasinan - FO': DOST_PANGASINAN_IMG,
+    'DOST-Ilocos Region': DOST_ILOCOS_REGION_IMG,
 };
 
 // ============================================================
