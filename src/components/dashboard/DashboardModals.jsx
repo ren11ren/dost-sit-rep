@@ -15,13 +15,13 @@ export const UserModal = ({
     const officeChoices = Array.isArray(officeOptions) && officeOptions.length > 0
         ? officeOptions
         : [
-            'PSTO-Ilocos Norte',
-            'PSTO-Ilocos Sur',
-            'PSTO-La Union',
-            'PSTO-Pangasinan',
-            'PSTO-Ilocos Sur - FO',
-            'PSTO-Pangasinan - FO',
-            'PSTO-Ilocos Region'
+            'DOST Ilocos Norte',
+            'DOST Ilocos Sur',
+            'DOST-La Union',
+            'DOST-Pangasinan',
+            'DOST-Ilocos Sur - FO',
+            'DOST-Pangasinan - FO',
+            'DOST-Ilocos Region'
         ];
 
     const options = Array.from(new Set([...(officeChoices || []), userForm?.office].filter(Boolean)));
