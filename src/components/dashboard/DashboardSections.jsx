@@ -154,6 +154,14 @@ const TYPHOON_HISTORY_KEY = 'dash_typhoon_history';
 
 const DEFAULT_EVENTS = [];
 
+const getOfficeDisplayName = (office) => {
+    if (!office || typeof office !== 'string') return office;
+    if (office.startsWith('PSTO-')) {
+        return office.replace(/^PSTO-/, 'DOST ');
+    }
+    return office;
+};
+
 const DEFAULT_USERS = [
     { id: 1, name: 'Admin User', email: 'admin@dostregion1.ph', office: 'PSTO-La Union', role: 'SADMIN', status: 'Active', password: 'admin123', profileImage: '' },
     { id: 2, name: 'Regional Admin', email: 'admin-ilocosnorte@dostregion1.ph', office: 'PSTO-Ilocos Norte', role: 'ADMIN', status: 'Active', password: 'admin123', profileImage: '' },
@@ -614,7 +622,7 @@ const PSTOSelector = ({ isUser, currentUser, officesData, selectedOffice, region
                     onClick={() => handleOfficeClick(currentUser.office)}
                 >
                     <div className="psto-selector-overlay">
-                        <div className="psto-selector-name">{currentUser.office}</div>
+                        <div className="psto-selector-name">{getOfficeDisplayName(currentUser.office)}</div>
                         <div className="psto-selector-stats">
                             <span>📊 {officesData[currentUser.office]?.related_incidents ?? 0}</span>
                             <span>⚠️ {officesData[currentUser.office]?.casualties ?? 0}</span>
@@ -631,13 +639,7 @@ const PSTOSelector = ({ isUser, currentUser, officesData, selectedOffice, region
                         onClick={() => handleOfficeClick('PSTO-Region-1')}
                     >
                         <div className="psto-selector-overlay">
-                            <div className="psto-selector-name">PSTO Ilocos Region</div>
-                            <div className="psto-selector-stats">
-                                <span>📊 {regionSummary.incidents}</span>
-                                <span>⚠️ {regionSummary.casualties}</span>
-                                <span>🏗️ {regionSummary.damageDetails}</span>
-                                <span>👥 {regionSummary.affectedStaff}</span>
-                            </div>
+                            <div className="psto-selector-name">{getOfficeDisplayName('PSTO-Ilocos Region')}</div>
                         </div>
                     </div>
                     {Object.keys(officesData).map(office => (
@@ -649,13 +651,7 @@ const PSTOSelector = ({ isUser, currentUser, officesData, selectedOffice, region
                             onClick={() => handleOfficeClick(office)}
                         >
                             <div className="psto-selector-overlay">
-                                <div className="psto-selector-name">{office}</div>
-                                <div className="psto-selector-stats">
-                                    <span>📊 {officesData[office].related_incidents}</span>
-                                    <span>⚠️ {officesData[office].casualties}</span>
-                                    <span>🏗️ {(officesData[office].damage_details || []).length}</span>
-                                    <span>👥 {(officesData[office].affected_staff || []).length}</span>
-                                </div>
+                                <div className="psto-selector-name">{getOfficeDisplayName(office)}</div>
                             </div>
                         </div>
                     ))}
@@ -668,7 +664,7 @@ const PSTOSelector = ({ isUser, currentUser, officesData, selectedOffice, region
 // Edit Controls Bar component
 const EditControlsBar = ({ selectedOffice, isUser, editMode, handleEditToggle, openReportModal, handleSave }) => (
     <div className="edit-controls-bar">
-        <div><strong>Current PSTO:</strong> {selectedOffice}</div>
+        <div><strong>Current DOST:</strong> {getOfficeDisplayName(selectedOffice)}</div>
         <div className="edit-buttons">
             {!isUser && selectedOffice !== 'PSTO-Region-1' && <button onClick={handleEditToggle}>{editMode ? 'Cancel' : '✏️ Edit PSTO Data'}</button>}
             {isUser && <button className="success" onClick={openReportModal}>📤 Submit Report</button>}

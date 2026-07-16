@@ -5,8 +5,8 @@
   "proxy": "http://localhost:5010",
   "scripts": {
     "start": "cross-env BROWSER=none HOST=0.0.0.0 DANGEROUSLY_DISABLE_HOST_CHECK=true PORT=3000 REACT_APP_API_PORT=5010 react-scripts start",
-    "server": "node server.js",
-    "dev": "concurrently \"cross-env PORT=5010 npm run server\" \"npm start\"",
+    "server": "cross-env NODE_ENV=development PORT=5010 node server.js",
+    "dev": "concurrently \"npm run server\" \"npm start\"",
     "ngrok": "ngrok http 3000 --host-header=localhost:3000",
     "build": "react-scripts build"
   },
@@ -20,6 +20,7 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-scripts": "5.0.1",
+    "serverless-http": "^3.0.0",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {

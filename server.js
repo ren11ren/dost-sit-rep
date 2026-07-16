@@ -15,8 +15,8 @@ let databaseReady = false;
 let databaseError = null;
 let useFallbackData = false;
 
-const allowAllOrigins = process.env.CORS_ALLOW_ALL === 'true' || process.env.NODE_ENV === 'production' || process.env.DOCKER_ENV === 'true';
-const allowedOriginRegex = /^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0|host\.docker\.internal|[\w.-]+\.local|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)(:\d+)?$/;
+const allowAllOrigins = process.env.CORS_ALLOW_ALL === 'true' || process.env.NODE_ENV === 'development' || process.env.DOCKER_ENV === 'true';
+const allowedOriginRegex = /^https?:\/\/(?:(?:localhost|127\.0\.0\.1|0\.0\.0\.0|host\.docker\.internal|[\w.-]+\.local|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(?:1[6-9]|2\d|3[0-1])\.\d+\.\d+|\[::1\]))(\:\d+)?$/;
 const configuredAllowedOrigins = (process.env.CORS_ALLOWED_ORIGINS || '')
     .split(',')
     .map((origin) => origin.trim())
@@ -815,6 +815,7 @@ app.get('/api/offices', async (req, res) => {
         rows.forEach(row => {
             const data = typeof row.data === 'string' ? JSON.parse(row.data) : (row.data || {});
             offices[row.office_name] = {
+                officeName: row.office_name,
                 ...data,
                 imageUrl: row.image_url,
                 municipalities: typeof row.municipalities === 'string' ? JSON.parse(row.municipalities) : (row.municipalities || []),
@@ -1298,7 +1299,7 @@ app.post('/api/typhoon-history', async (req, res) => {
     }
 });
 
-if (require.main === module) {
+const startServer = () => {
     app.listen(port, '0.0.0.0', () => {
         console.log('');
         console.log('🚀 Server running on port ' + port);
@@ -1306,6 +1307,12 @@ if (require.main === module) {
         console.log('📦 Connecting to PostgreSQL...');
         console.log('');
     });
+};
+
+if (require.main === module) {
+    startServer();
 }
+
+module.exports = app;
 
 module.exports = { app, createFallbackStore, loadFallbackStore, persistFallbackStore };

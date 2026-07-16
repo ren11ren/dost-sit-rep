@@ -8,6 +8,12 @@ export const escapeHtml = (value) => {
     .replace(/'/g, '&#39;');
 };
 
+const getOfficeDisplayName = (office) => {
+  if (!office || typeof office !== 'string') return office;
+  if (office.startsWith('PSTO-')) return office.replace(/^PSTO-/, 'DOST ');
+  return office;
+};
+
 export const buildExcelExportRows = ({ activeEvent, officesData }) => {
   const reportData = [];
   reportData.push(['SITUATIONAL REPORT']);
@@ -25,44 +31,44 @@ export const buildExcelExportRows = ({ activeEvent, officesData }) => {
     const warningTags = Object.entries(officeData.warning_signals || {})
       .map(([municipality, signal]) => `${municipality} (Signal ${signal})`)
       .join('; ') || 'None';
-    reportData.push([officeName, warningTags, officeData.general_weather || 'N/A']);
+    reportData.push([getOfficeDisplayName(officeName), warningTags, officeData.general_weather || 'N/A']);
   });
   reportData.push([]);
   reportData.push(['II. EFFECTS']);
   reportData.push([]);
   reportData.push(['OFFICE', 'RELATED INCIDENTS', 'REMARKS']);
   Object.entries(officesData || {}).forEach(([officeName, officeData]) => {
-    reportData.push([officeName, officeData.related_incidents ?? 0, officeData.remark_related_incidents || '-']);
+    reportData.push([getOfficeDisplayName(officeName), officeData.related_incidents ?? 0, officeData.remark_related_incidents || '-']);
   });
   reportData.push([]);
   reportData.push(['OFFICE', 'CASUALTIES', 'REMARKS']);
   Object.entries(officesData || {}).forEach(([officeName, officeData]) => {
-    reportData.push([officeName, officeData.casualties ?? 0, officeData.remark_casualties || '-']);
+    reportData.push([getOfficeDisplayName(officeName), officeData.casualties ?? 0, officeData.remark_casualties || '-']);
   });
   reportData.push([]);
   reportData.push(['OFFICE', 'POWER STATUS', 'REMARKS']);
   Object.entries(officesData || {}).forEach(([officeName, officeData]) => {
-    reportData.push([officeName, officeData.power_status || '—', officeData.remark_power_status || '-']);
+    reportData.push([getOfficeDisplayName(officeName), officeData.power_status || '—', officeData.remark_power_status || '-']);
   });
   reportData.push([]);
   reportData.push(['OFFICE', 'COMMUNICATION STATUS', 'REMARKS']);
   Object.entries(officesData || {}).forEach(([officeName, officeData]) => {
-    reportData.push([officeName, officeData.communication_lines || '—', officeData.remark_communication_lines || '-']);
+    reportData.push([getOfficeDisplayName(officeName), officeData.communication_lines || '—', officeData.remark_communication_lines || '-']);
   });
   reportData.push([]);
   reportData.push(['OFFICE', 'DAMAGE STATUS', 'REMARKS']);
   Object.entries(officesData || {}).forEach(([officeName, officeData]) => {
-    reportData.push([officeName, officeData.damage_facilities || '—', officeData.remark_damage_facilities || '-']);
+    reportData.push([getOfficeDisplayName(officeName), officeData.damage_facilities || '—', officeData.remark_damage_facilities || '-']);
   });
   reportData.push([]);
   reportData.push(['OFFICE', 'WORK SUSPENSION', 'REMARKS']);
   Object.entries(officesData || {}).forEach(([officeName, officeData]) => {
-    reportData.push([officeName, officeData.work_suspension ? 'Suspended' : 'No suspension', officeData.remark_work_suspension || '-']);
+    reportData.push([getOfficeDisplayName(officeName), officeData.work_suspension ? 'Suspended' : 'No suspension', officeData.remark_work_suspension || '-']);
   });
   reportData.push([]);
   reportData.push(['OFFICE', 'ASSISTANCE PROVIDED', 'REMARKS']);
   Object.entries(officesData || {}).forEach(([officeName, officeData]) => {
-    reportData.push([officeName, officeData.assistance_provided || '—', officeData.remark_assistance_provided || '-']);
+    reportData.push([getOfficeDisplayName(officeName), officeData.assistance_provided || '—', officeData.remark_assistance_provided || '-']);
   });
   reportData.push([]);
   reportData.push(['III. DAMAGE BUILDING']);
@@ -72,7 +78,7 @@ export const buildExcelExportRows = ({ activeEvent, officesData }) => {
       const details = [damage.description, damage.cost ? `₱${damage.cost}` : '', damage.status].filter(Boolean);
       return details.join(' • ');
     }).join(' | ');
-    reportData.push([officeName, damages || 'No damage records']);
+    reportData.push([getOfficeDisplayName(officeName), damages || 'No damage records']);
   });
   reportData.push([]);
   reportData.push(['IV. AFFECTED STAFF']);
@@ -82,7 +88,7 @@ export const buildExcelExportRows = ({ activeEvent, officesData }) => {
       const details = [person.name, person.area, person.assistance, person.status].filter(Boolean);
       return details.join(' • ');
     }).join(' | ');
-    reportData.push([officeName, staff || 'No affected staff']);
+    reportData.push([getOfficeDisplayName(officeName), staff || 'No affected staff']);
   });
   reportData.push([]);
   reportData.push(['NARRATIVE SUMMARY']);
@@ -96,32 +102,35 @@ export const buildBondPaperReportHtml = ({ activeEvent, officesData }) => {
   const narrative = Object.values(officesData || {}).map((office) => office.remark).filter(Boolean).join(' ') || 'No additional remarks.';
 
   const summaryRows = reportOffices.map(([officeName, officeData]) => {
+    const displayName = getOfficeDisplayName(officeName);
     const warningTags = Object.entries(officeData.warning_signals || {})
       .map(([municipality, signal]) => `${municipality} (Signal ${signal})`)
       .join('; ') || 'None';
-    return `<tr><td>${escapeHtml(officeName)}</td><td>${escapeHtml(warningTags)}</td><td>${escapeHtml(officeData.general_weather || 'N/A')}</td></tr>`;
+    return `<tr><td>${escapeHtml(displayName)}</td><td>${escapeHtml(warningTags)}</td><td>${escapeHtml(officeData.general_weather || 'N/A')}</td></tr>`;
   }).join('');
 
   const sectionRows = (key, label) => reportOffices.map(([officeName, officeData]) => {
     const value = officeData[key] || '—';
     const remarks = officeData[`remark_${key}`] || '-';
-    return `<tr><td>${escapeHtml(officeName)}</td><td>${escapeHtml(value)}</td><td>${escapeHtml(remarks)}</td></tr>`;
+    return `<tr><td>${escapeHtml(getOfficeDisplayName(officeName))}</td><td>${escapeHtml(value)}</td><td>${escapeHtml(remarks)}</td></tr>`;
   }).join('');
 
   const buildingRows = reportOffices.map(([officeName, officeData]) => {
+    const displayName = getOfficeDisplayName(officeName);
     const damageRecords = (officeData.damage_details || []).map((damage) => {
       const details = [damage.description, damage.cost ? `₱${damage.cost}` : '', damage.status].filter(Boolean);
       return `<div>${escapeHtml(details.join(' • '))}</div>`;
     }).join('');
-    return `<tr><td>${escapeHtml(officeName)}</td><td>${damageRecords || '<em>No damage records</em>'}</td></tr>`;
+    return `<tr><td>${escapeHtml(displayName)}</td><td>${damageRecords || '<em>No damage records</em>'}</td></tr>`;
   }).join('');
 
   const staffRows = reportOffices.map(([officeName, officeData]) => {
+    const displayName = getOfficeDisplayName(officeName);
     const staffRecords = (officeData.affected_staff || []).map((person) => {
       const details = [person.name, person.area, person.assistance, person.status].filter(Boolean);
       return `<div>${escapeHtml(details.join(' • '))}</div>`;
     }).join('');
-    return `<tr><td>${escapeHtml(officeName)}</td><td>${staffRecords || '<em>No affected staff</em>'}</td></tr>`;
+    return `<tr><td>${escapeHtml(displayName)}</td><td>${staffRecords || '<em>No affected staff</em>'}</td></tr>`;
   }).join('');
 
   return `<!DOCTYPE html>
@@ -171,7 +180,9 @@ export const buildBondPaperReportHtml = ({ activeEvent, officesData }) => {
     .report-section { margin-top: 16px; }
     .report-section h3 { font-size: 13px; margin: 0 0 6px; text-transform: uppercase; color: #0d3b66; }
     table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
-    th, td { border: 1px solid #1f1f1f; padding: 7px; font-size: 11px; vertical-align: top; }
+    th, td { border: 1px solid #1f1f1f; padding: 7px; font-size: 11px; vertical-align: top; text-align: left; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 8px; table-layout: fixed; }
+    td { word-break: break-word; }
     th { background: #f2f2f2; text-align: left; }
     .signature-block { margin-top: 20px; display: flex; justify-content: space-between; gap: 16px; font-size: 12px; }
     .signature-block div { width: 45%; }

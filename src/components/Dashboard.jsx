@@ -903,20 +903,40 @@ const Dashboard = ({ onLogout, currentUser }) => {
                 }
             };
 
+            const getLocalChangeFlags = () => {
+                try {
+                    return {
+                        offices: JSON.stringify(officesData) !== JSON.stringify(DEFAULT_OFFICE_DATA),
+                        events: JSON.stringify(events) !== JSON.stringify(archiveOldEvents(DEFAULT_EVENTS)),
+                        users: JSON.stringify(users) !== JSON.stringify(DEFAULT_USERS),
+                        reports: Array.isArray(pendingReports) && pendingReports.length > 0,
+                        notifications: Array.isArray(notifications) && notifications.length > 0,
+                        typhoonHistory: Array.isArray(typhoonHistory) && typhoonHistory.length > 0,
+                        activeMenu: typeof activeMenu === 'string' && activeMenu.trim() && activeMenu !== 'dashboard'
+                    };
+                } catch (e) {
+                    return {
+                        offices: false,
+                        events: false,
+                        users: false,
+                        reports: false,
+                        notifications: false,
+                        typhoonHistory: false,
+                        activeMenu: false
+                    };
+                }
+            };
+
             const hasLocalUserData = () => {
                 try {
-                    const officesChanged = JSON.stringify(officesData) !== JSON.stringify(DEFAULT_OFFICE_DATA);
-                    const eventsChanged = JSON.stringify(events) !== JSON.stringify(archiveOldEvents(DEFAULT_EVENTS));
-                    const usersChanged = JSON.stringify(users) !== JSON.stringify(DEFAULT_USERS);
-                    const hasReports = Array.isArray(pendingReports) && pendingReports.length > 0;
-                    const hasNotifications = Array.isArray(notifications) && notifications.length > 0;
-                    return officesChanged || eventsChanged || usersChanged || hasReports || hasNotifications;
+                    const flags = getLocalChangeFlags();
+                    return Object.values(flags).some(Boolean);
                 } catch (e) {
                     return false;
                 }
             };
 
-            const applyRemoteData = (payload, isBootstrap = false) => {
+            const applyRemoteData = (payload, isBootstrap = false, preserveLocalSegments = {}) => {
                 try {
                     if (!isBootstrap) {
                         const localLastMod = parseInt(loadFromStorage(STORAGE_KEYS.LAST_MODIFIED, 0), 10) || 0;
@@ -931,8 +951,10 @@ const Dashboard = ({ onLogout, currentUser }) => {
                     const hasUsers = Array.isArray(payload?.users) && payload.users.length > 0;
                     const hasReports = Array.isArray(payload?.reports) && payload.reports.length > 0;
                     const hasNotifications = Array.isArray(payload?.notifications) && payload.notifications.length > 0;
+                    const hasHistory = Array.isArray(payload?.typhoonHistory) && payload.typhoonHistory.length > 0;
+                    const hasActiveMenu = typeof payload?.activeMenu === 'string' && payload.activeMenu.trim();
 
-                    if (hasOffices) {
+                    if (hasOffices && !preserveLocalSegments.offices) {
                         setOfficesData(prev => {
                             try {
                                 const merged = { ...DEFAULT_OFFICE_DATA, ...payload.offices };
@@ -955,10 +977,9 @@ const Dashboard = ({ onLogout, currentUser }) => {
                             }
                         });
                     }
-                    if (hasEvents) setEvents(archiveOldEvents(payload.events));
-                    if (hasUsers) setUsers(payload.users);
-                    if (hasReports) {
-                        // Normalize server report shape to client expectations
+                    if (hasEvents && !preserveLocalSegments.events) setEvents(archiveOldEvents(payload.events));
+                    if (hasUsers && !preserveLocalSegments.users) setUsers(payload.users);
+                    if (hasReports && !preserveLocalSegments.reports) {
                         const normalized = (payload.reports || []).map(r => ({
                             id: r.id || r.ID || null,
                             office: r.office || r.office_name || r.office || '',
@@ -974,12 +995,13 @@ const Dashboard = ({ onLogout, currentUser }) => {
                         }));
                         setPendingReports(normalized);
                     }
-                    if (hasNotifications) setNotifications(payload.notifications);
-                    if (typeof payload?.activeMenu === 'string' && payload.activeMenu.trim()) setActiveMenu(payload.activeMenu);
-                    if (Array.isArray(payload?.typhoonHistory) && payload.typhoonHistory.length > 0) {
+                    if (hasNotifications && !preserveLocalSegments.notifications) setNotifications(payload.notifications);
+                    if (hasHistory && !preserveLocalSegments.typhoonHistory) {
                         setTyphoonHistory(payload.typhoonHistory);
                         saveToStorage(STORAGE_KEYS.HISTORY, payload.typhoonHistory);
                     }
+                    if (hasActiveMenu && !preserveLocalSegments.activeMenu) setActiveMenu(payload.activeMenu);
+
                     setTimeout(() => { suppressRemotePushRef.current = false; }, 1200);
                 } catch (e) {
                     console.error('applyRemoteData error:', e);
@@ -994,14 +1016,36 @@ const Dashboard = ({ onLogout, currentUser }) => {
                         dbService.getTyphoonHistory()
                     ]);
 
+                    const localFlags = getLocalChangeFlags();
+                    const hasAnyLocalChanges = Object.values(localFlags).some(Boolean);
                     if (initial && hasRemoteData(initial)) {
                         const activeMenuRemote = await dbService.getActiveMenu();
-                        applyRemoteData({
+                        const bootstrapPayload = {
                             ...initial,
                             activeMenu: activeMenuRemote || 'dashboard',
                             typhoonHistory: Array.isArray(remoteHistory) ? remoteHistory : []
-                        }, true);
-                    } else if (hasLocalUserData()) {
+                        };
+
+                        if (hasAnyLocalChanges) {
+                            applyRemoteData(bootstrapPayload, true, localFlags);
+                            try {
+                                await dbService.syncAllData({
+                                    ...(localFlags.offices ? { officesData } : {}),
+                                    ...(localFlags.events ? { events } : {}),
+                                    ...(localFlags.users ? { users } : {}),
+                                    ...(localFlags.reports ? { pendingReports } : {}),
+                                    ...(localFlags.notifications ? { notifications } : {}),
+                                    ...(localFlags.typhoonHistory ? { typhoonHistory } : {}),
+                                    ...(localFlags.activeMenu ? { activeMenu } : {}),
+                                    _localTs: Date.now()
+                                });
+                            } catch (syncErr) {
+                                console.warn('bootstrap local sync warning:', syncErr);
+                            }
+                        } else {
+                            applyRemoteData(bootstrapPayload, true);
+                        }
+                    } else if (hasAnyLocalChanges) {
                         await dbService.syncAllData({
                             officesData,
                             events,
@@ -1009,7 +1053,8 @@ const Dashboard = ({ onLogout, currentUser }) => {
                             pendingReports,
                             notifications,
                             activeMenu,
-                            typhoonHistory
+                            typhoonHistory,
+                            _localTs: Date.now()
                         });
                     }
 
@@ -1247,19 +1292,37 @@ const Dashboard = ({ onLogout, currentUser }) => {
                     imageUrl: formData.imageUrl || OFFICE_IMAGE_MAP[selectedOffice] || DOST_MASTER_LOGO,
                 };
 
-                setOfficesData(prev => ({
-                    ...prev,
+                const nextOfficesData = {
+                    ...officesData,
                     [selectedOffice]: updatedData
-                }));
+                };
+                setOfficesData(nextOfficesData);
 
                 setEditMode(false);
                 addNotification('PSTO Data Saved', `${selectedOffice} data was manually edited.`, 'info');
                 showToast('PSTO data saved.', 'success');
+
+                (async () => {
+                    try {
+                        await dbService.syncAllData({
+                            officesData: nextOfficesData,
+                            events,
+                            users,
+                            pendingReports,
+                            notifications,
+                            activeMenu,
+                            typhoonHistory,
+                            _localTs: Date.now()
+                        });
+                    } catch (syncErr) {
+                        console.warn('handleSave sync warning:', syncErr);
+                    }
+                })();
             } catch (e) {
                 console.error('handleSave error:', e);
                 showToast('Failed to save data.', 'error');
             }
-        }, [selectedOffice, formData, setOfficesData, addNotification, showToast]);
+        }, [selectedOffice, formData, officesData, events, users, pendingReports, notifications, activeMenu, typhoonHistory, setOfficesData, addNotification, showToast]);
 
         // --- Office Image Handlers ---
         const handleOfficeImageChange = useCallback(async (e) => {

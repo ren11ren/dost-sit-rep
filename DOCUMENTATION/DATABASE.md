@@ -9,12 +9,14 @@ The DOST system uses PostgreSQL as the primary database with JSON file-based fal
 ## Database Connection
 
 ### Local Development
+
 ```bash
 # PostgreSQL running locally
 psql -U postgres -d dost_sitrep -h localhost
 ```
 
 ### Environment Variables
+
 ```bash
 # Full connection string
 DATABASE_URL=postgres://username:password@localhost:5432/dost_sitep
@@ -23,11 +25,12 @@ DATABASE_URL=postgres://username:password@localhost:5432/dost_sitep
 DB_HOST=localhost
 DB_PORT=5432
 DB_USER=postgres
-DB_PASSWORD=your_password
+DB_PASSWORD=dostpass
 DB_NAME=dost_sitep
 ```
 
 ### Connection Pooling
+
 - Backend uses connection pool (max connections: configurable)
 - Prevents connection exhaustion
 - Automatic reconnection on failure
@@ -99,6 +102,7 @@ archived_events (Historical event data)
 ### 1. Offices Table
 
 **SQL Definition:**
+
 ```sql
 CREATE TABLE IF NOT EXISTS offices (
     id SERIAL PRIMARY KEY,
@@ -114,6 +118,7 @@ CREATE TABLE IF NOT EXISTS offices (
 ```
 
 **Sample Record:**
+
 ```json
 {
   "id": 1,
@@ -155,6 +160,7 @@ CREATE TABLE IF NOT EXISTS offices (
 ```
 
 **Indexes:**
+
 ```sql
 CREATE UNIQUE INDEX idx_office_name ON offices(office_name);
 CREATE INDEX idx_office_updated_at ON offices(updated_at);
@@ -165,6 +171,7 @@ CREATE INDEX idx_office_updated_at ON offices(updated_at);
 ### 2. Events Table
 
 **SQL Definition:**
+
 ```sql
 CREATE TABLE IF NOT EXISTS events (
     id SERIAL PRIMARY KEY,
@@ -177,6 +184,7 @@ CREATE TABLE IF NOT EXISTS events (
 ```
 
 **Sample Record:**
+
 ```json
 {
   "id": 1,
@@ -207,6 +215,7 @@ CREATE TABLE IF NOT EXISTS events (
 ```
 
 **Indexes:**
+
 ```sql
 CREATE INDEX idx_events_status ON events(status);
 CREATE INDEX idx_events_deployment ON events(deployment);
@@ -218,6 +227,7 @@ CREATE INDEX idx_events_created_at ON events(created_at DESC);
 ### 3. Users Table
 
 **SQL Definition:**
+
 ```sql
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
@@ -234,6 +244,7 @@ CREATE TABLE IF NOT EXISTS users (
 ```
 
 **Sample Record:**
+
 ```json
 {
   "id": 1,
@@ -250,6 +261,7 @@ CREATE TABLE IF NOT EXISTS users (
 ```
 
 **Indexes:**
+
 ```sql
 CREATE UNIQUE INDEX idx_email ON users(email);
 CREATE INDEX idx_office ON users(office);
@@ -257,6 +269,7 @@ CREATE INDEX idx_role ON users(role);
 ```
 
 **Role Hierarchy:**
+
 - `USER` - View own office data, submit reports
 - `ADMIN` - Manage users, view all data
 - `SADMIN` - Full system access
@@ -266,6 +279,7 @@ CREATE INDEX idx_role ON users(role);
 ### 4. Pending Reports Table
 
 **SQL Definition:**
+
 ```sql
 CREATE TABLE IF NOT EXISTS pending_reports (
     id SERIAL PRIMARY KEY,
@@ -279,6 +293,7 @@ CREATE TABLE IF NOT EXISTS pending_reports (
 ```
 
 **Sample Record:**
+
 ```json
 {
   "id": 42,
@@ -305,6 +320,7 @@ CREATE TABLE IF NOT EXISTS pending_reports (
 ```
 
 **Indexes:**
+
 ```sql
 CREATE INDEX idx_pending_office ON pending_reports(office);
 CREATE INDEX idx_pending_status ON pending_reports(status);
@@ -316,6 +332,7 @@ CREATE INDEX idx_pending_submitted_at ON pending_reports(submitted_at DESC);
 ### 5. Notifications Table
 
 **SQL Definition:**
+
 ```sql
 CREATE TABLE IF NOT EXISTS notifications (
     id SERIAL PRIMARY KEY,
@@ -328,6 +345,7 @@ CREATE TABLE IF NOT EXISTS notifications (
 ```
 
 **Sample Record:**
+
 ```json
 {
   "id": 1,
@@ -340,6 +358,7 @@ CREATE TABLE IF NOT EXISTS notifications (
 ```
 
 **Indexes:**
+
 ```sql
 CREATE INDEX idx_notification_office ON notifications(office);
 CREATE INDEX idx_notification_read ON notifications(read);
@@ -351,6 +370,7 @@ CREATE INDEX idx_notification_created_at ON notifications(created_at DESC);
 ### 6. Archived Events Table
 
 **SQL Definition:**
+
 ```sql
 CREATE TABLE IF NOT EXISTS archived_events (
     id SERIAL PRIMARY KEY,
@@ -362,6 +382,7 @@ CREATE TABLE IF NOT EXISTS archived_events (
 ```
 
 **Sample Record:**
+
 ```json
 {
   "id": 1,
@@ -437,8 +458,9 @@ CREATE TABLE IF NOT EXISTS archived_events (
 ## Queries & Common Operations
 
 ### Get Current Situation Summary
+
 ```sql
-SELECT 
+SELECT
   name,
   (event_data->>'alert_level')::int as alert_level,
   jsonb_object_keys(event_data->'office_summaries') as offices,
@@ -449,8 +471,9 @@ LIMIT 1;
 ```
 
 ### Get Office Report History
+
 ```sql
-SELECT 
+SELECT
   office,
   submitted_by,
   report_data,
@@ -463,6 +486,7 @@ LIMIT 10;
 ```
 
 ### Archive Previous Events on Deployment
+
 ```sql
 -- Archive current active event
 INSERT INTO archived_events (event_id, event_data, archived_reason)
@@ -478,6 +502,7 @@ UPDATE events SET status = 'active', deployment = 'Deployed' WHERE id = $1;
 ```
 
 ### Get Active Users Count by Office
+
 ```sql
 SELECT office, COUNT(*) as user_count
 FROM users
@@ -487,6 +512,7 @@ ORDER BY user_count DESC;
 ```
 
 ### Unread Notifications Count
+
 ```sql
 SELECT COUNT(*) as unread_count
 FROM notifications
@@ -498,6 +524,7 @@ WHERE read = false AND office = $1;
 ## Performance Optimization
 
 ### Indexes Created
+
 - Office name (UNIQUE) - fast office lookups
 - Event status - filtering active/archived
 - User email (UNIQUE) - user authentication
@@ -505,12 +532,14 @@ WHERE read = false AND office = $1;
 - Notification read status - UI filters
 
 ### Query Optimization Tips
+
 1. Always filter by specific office when possible
 2. Use event status in WHERE clauses
 3. Paginate large result sets (pending reports, notifications)
 4. Use JSONB operators for nested field searches
 
 ### Potential Bottlenecks
+
 - Large `event_data` JSONB documents may slow queries
 - Notifications table grows unbounded (consider archiving)
 - No sharding currently (single database)
@@ -520,6 +549,7 @@ WHERE read = false AND office = $1;
 ## Backup & Recovery
 
 ### Backup Strategy
+
 ```bash
 # Full database backup
 pg_dump -U postgres dost_sitep > backup_$(date +%Y%m%d).sql
@@ -529,6 +559,7 @@ psql -U postgres dost_sitep < backup_20260715.sql
 ```
 
 ### Fallback Store
+
 - File: `data/fallback-store.json`
 - Auto-updated when database operations occur
 - Allows read operations if database is down
@@ -539,9 +570,10 @@ psql -U postgres dost_sitep < backup_20260715.sql
 ## Monitoring & Maintenance
 
 ### Health Checks
+
 ```sql
 -- Check table sizes
-SELECT schemaname, tablename, pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) 
+SELECT schemaname, tablename, pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename))
 FROM pg_tables WHERE schemaname = 'public' ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC;
 
 -- Check for slow queries
@@ -550,6 +582,7 @@ SELECT * FROM pending_reports WHERE office = 'DOST-Ilocos Norte' LIMIT 100;
 ```
 
 ### Maintenance Tasks
+
 - Vacuum tables (auto-vacuum enabled)
 - Reindex after large deletions
 - Archive old notifications monthly
@@ -560,12 +593,14 @@ SELECT * FROM pending_reports WHERE office = 'DOST-Ilocos Norte' LIMIT 100;
 ## Initial Data Seeding
 
 ### seed.sql
+
 Includes default users, offices, and test data. Run on first setup:
+
 ```bash
 psql -U postgres dost_sitep < database/seed.sql
 ```
 
 **Default Test Users:**
+
 - Admin: admin@dostregion1.ph / admin123
 - Field Staff: Various DOST office users
-

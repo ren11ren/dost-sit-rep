@@ -33,7 +33,19 @@ const apiCall = async (endpoint, method = 'GET', data = null) => {
 };
 
 export const dbService = {
-  async getOfficesData() { return await apiCall('/offices'); },
+  async getOfficesData() {
+    const result = await apiCall('/offices');
+    if (Array.isArray(result)) {
+      return result.reduce((map, row) => {
+        const key = row.office_name || row.officeName || row.office || null;
+        if (key) {
+          map[key] = row;
+        }
+        return map;
+      }, {});
+    }
+    return result || {};
+  },
   async saveOfficesData(officesData) { return await apiCall('/offices', 'POST', officesData); },
   async getEvents() { return await apiCall('/events'); },
   async saveEvents(events) { return await apiCall('/events', 'POST', events); },

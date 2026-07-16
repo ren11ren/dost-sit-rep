@@ -60,3 +60,11 @@ CREATE TABLE IF NOT EXISTS settings (
     setting_value JSONB,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS typhoon_history (
+    id SERIAL PRIMARY KEY,
+    event_id VARCHAR(255),
+    event_data JSONB NOT NULL,
+    archived_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
